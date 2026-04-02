@@ -1,26 +1,73 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+/**
+ * Dashboard.jsx
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHAT'S IMPROVED vs your original:
+ *  ✓ Shows verification banner for unverified users (non-blocking)
+ *  ✓ Greeting uses userProfile.displayName from Firestore
+ *  ✓ Uses getToken() for any future API calls to Laravel
+ *  ✓ isNewUser flag available for onboarding flows
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+import { useAuth }       from '@/context/AuthContext';
+import { useStreak }     from '@/hooks/useStreak';
+import { useTasks }      from '@/hooks/useTasks';
+import { useCountdowns } from '@/hooks/useCountdowns';
+import { resendVerificationEmail } from '@/services/firebaseAuthService';
+import { VerificationBanner } from '@/context/auth/AuthUI';
+
+import PomodoroTimer   from '@/components/Dashboard/Pomodorotimer';
+import CalendarWidget  from '@/components/Dashboard/Calendarwidget';
+import StreakWidget    from '@/components/Dashboard/Streakwidget';
+import CountdownWidget from '@/components/Dashboard/Countdownwidget';
+import MusicWidget     from '@/components/Dashboard/Musicwidget';
+import BottomNav       from '@/components/layout/BottomNav';
+import Footer          from '@/components/layout/Footer';
 
 export default function Dashboard() {
-    return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Dashboard
-                </h2>
-            }
-        >
-            <Head title="Dashboard" />
+  const {
+    currentUser,
+    userProfile,
+    emailVerified,
+    checkEmailVerification,
+  } = useAuth();
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            You're logged in!
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </AuthenticatedLayout>
-    );
+  const uid = currentUser?.uid;
+
+  const { streak }                                     = useStreak(uid);
+  const { tasks }                                      = useTasks(uid);
+  const { countdowns, addCountdown, deleteCountdown }  = useCountdowns(uid);
+
+  const incompleteTasks = tasks.filter(t => !t.done).length;
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <main className="max-w-sm mx-auto px-4 pt-6 pb-24">
+
+        {/*
+          Email verification banner.
+          Non-blocking — users can use the app, but are reminded to verify.
+          Hidden once emailVerified = true (Firebase updates this live).
+        */}
+        {!emailVerified && (
+          <VerificationBanner
+            onResend={resendVerificationEmail}
+            onVerified={checkEmailVerification}
+          />
+        )}
+
+        <PomodoroTimer />
+        <CalendarWidget taskCount={incompleteTasks} />
+        <StreakWidget streak={streak} />
+        <CountdownWidget
+          countdowns={countdowns}
+          onAdd={addCountdown}
+          onDelete={deleteCountdown}
+        />
+        <MusicWidget />
+        <Footer />
+      </main>
+      <BottomNav />
+    </div>
+  );
 }

@@ -1,34 +1,54 @@
-// Import Tailwind CSS and bootstrap JS (loads Inertia)
-import '../css/app.css';
-import './bootstrap';
-
-import React from 'react';
+// resources/js/app.jsx
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from '@/context/AuthContext';
+import ProtectedRoute from '@/components/layout/ProtectedRoute';
 
-// Import your Dashboard component from Components folder
-import Dashboard from './Components/Dashboard/Dashboard';
+// Pages
+import LoginPage    from '@/Pages/LoginPage';
+import RegisterPage from '@/Pages/RegisterPage';
+import Dashboard    from '@/Pages/Dashboard';
+import CalendarPage from '@/Pages/CalendarPage';
+import ChatPage     from '@/Pages/ChatPage';
+import CardsPage    from '@/Pages/CardsPage';
+import AccountPage  from '@/Pages/AccountPage';
 
-// -----------------------------
-// Mount React manually without Inertia page resolution
-// -----------------------------
-const el = document.getElementById('app'); // The div in your Blade file
-if (el) {
-    const root = createRoot(el);
-    root.render(
-        // Render the Dashboard component directly
-        <React.StrictMode>
-            <Dashboard />
-        </React.StrictMode>
-    );
+import '../css/app.css';   // Tailwind directives: @tailwind base/components/utilities
+
+function App() {
+  return (
+    // BrowserRouter enables /login, /register, etc.
+    <BrowserRouter>
+      {/* AuthProvider wraps everything — provides currentUser everywhere */}
+      <AuthProvider>
+        <Routes>
+          {/* Public routes — accessible without login */}
+          <Route path="/login"    element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          {/* Protected routes — redirect to /login if not authenticated */}
+          <Route path="/" element={
+            <ProtectedRoute><Dashboard /></ProtectedRoute>
+          } />
+          <Route path="/calendar" element={
+            <ProtectedRoute><CalendarPage /></ProtectedRoute>
+          } />
+          <Route path="/chat" element={
+            <ProtectedRoute><ChatPage /></ProtectedRoute>
+          } />
+          <Route path="/cards" element={
+            <ProtectedRoute><CardsPage /></ProtectedRoute>
+          } />
+          <Route path="/account" element={
+            <ProtectedRoute><AccountPage /></ProtectedRoute>
+          } />
+
+          {/* Catch-all: redirect unknown URLs to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }
 
-// -----------------------------
-// Comments / Explanation:
-// -----------------------------
-// 1. import '../css/app.css'; -> Loads Tailwind CSS classes
-// 2. import './bootstrap'; -> Loads Laravel + Inertia + React bootstrap scripts
-// 3. import Dashboard -> Import your new Dashboard component
-// 4. createRoot(el).render(...) -> Mounts React to <div id="app"> in Blade
-// 5. <Dashboard /> -> This will render your menu + main content
-// 6. No longer using Welcome.jsx or resolvePageComponent
-//    because we want a SPA-like dashboard starting point
+createRoot(document.getElementById('app')).render(<App />);
