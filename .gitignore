@@ -23,3 +23,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 storage/app/firebase-service-account.json
+
+echo "storage/app/study-files/" >> .gitignore
+echo "storage/app/study-files-original/" >> .gitignore
+echo "storage/app/firebase-service-account.json" >> .gitignore

@@ -1,5 +1,7 @@
-// app/Http/Middleware/VerifyFirebaseToken.php
+<?php
 namespace App\Http\Middleware;
+
+// app/Http/Middleware/VerifyFirebaseToken.php
 
 use Closure;
 use Illuminate\Http\Request;
