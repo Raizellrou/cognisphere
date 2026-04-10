@@ -13,8 +13,8 @@
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
-        "phpoffice/phpword": "*",
-        "smalot/pdfparser": "*",
+        "phpoffice/phpword": "^1.1",
+        "smalot/pdfparser": "^2.12",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

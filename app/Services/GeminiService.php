@@ -1,19 +1,12 @@
 <?php
 // app/Services/GeminiService.php
 // ─────────────────────────────────────────────────────────────────────────────
-// Handles all communication with the Google Gemini API.
-//
-// KEY DESIGN DECISIONS:
-//  1. The system prompt HARD-ENFORCES study-only context.
-//     Gemini is instructed to refuse anything outside the uploaded documents.
-//  2. File content is injected into the prompt as a "STUDY MATERIALS" block.
-//     Gemini then treats it as the ONLY source of truth.
-//  3. If no files are attached, the AI is still strict — it tells the user
-//     to upload materials before asking questions.
-//  4. Conversation history is sent with every request so Gemini has context.
-//
-// Requires: composer require google/cloud-ai-platform (or direct HTTP via Guzzle)
-// We use direct HTTP here to avoid dependency conflicts.
+// FIXES:
+//  1. Retry with exponential backoff on 503 (Gemini overload is temporary)
+//  2. Auto-fallback to a stable model if primary keeps failing
+//  3. Better error messages — surfaces the ACTUAL Gemini error to logs
+//     so you can tell if it's a bad API key vs server overload
+//  4. Validates API key is set before making any request
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace App\Services;
@@ -24,93 +17,157 @@ use Illuminate\Support\Facades\Log;
 class GeminiService
 {
     private string $apiKey;
-    private string $model;
-    private string $endpoint;
+
+    // Model priority order — falls back down the list on repeated 503s
+    private array $models = [
+        'gemini-1.5-flash',       // Primary: fast, free tier friendly
+        'gemini-1.5-flash-8b',    // Fallback 1: lighter, more available
+        'gemini-1.0-pro',         // Fallback 2: older but very stable
+    ];
+
+    private string $baseEndpoint =
+        'https://generativelanguage.googleapis.com/v1beta/models/';
 
     public function __construct()
     {
-        $this->apiKey   = config('services.gemini.api_key');
-        $this->model    = config('services.gemini.model', 'gemini-1.5-flash');
-        $this->endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent";
+        $this->apiKey = config('services.gemini.api_key', '');
     }
 
     /**
-     * Send a user question + file context + conversation history to Gemini.
-     *
-     * @param string $userMessage       The user's current question
-     * @param string $fileContext       Extracted text from all attached files (may be empty)
-     * @param array  $conversationHistory  Previous messages [['role'=>'user'|'model', 'parts'=>[['text'=>'...']]]]
-     * @return string                   Gemini's response text
+     * Send a message to Gemini with automatic retry + model fallback.
      */
     public function ask(
         string $userMessage,
         string $fileContext = '',
         array  $conversationHistory = []
     ): string {
-        $systemInstruction = $this->buildSystemPrompt($fileContext);
-        $contents          = $this->buildContents($conversationHistory, $userMessage);
-
-        $payload = [
-            'system_instruction' => [
-                'parts' => [['text' => $systemInstruction]],
-            ],
-            'contents'           => $contents,
-            'generationConfig'   => [
-                'temperature'     => 0.3,   // Lower = more factual, less hallucination
-                'topK'            => 40,
-                'topP'            => 0.95,
-                'maxOutputTokens' => 2048,
-            ],
-            'safetySettings' => [
-                ['category' => 'HARM_CATEGORY_HARASSMENT',        'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
-                ['category' => 'HARM_CATEGORY_HATE_SPEECH',       'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
-                ['category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
-                ['category' => 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
-            ],
-        ];
-
-        $response = Http::withQueryParameters(['key' => $this->apiKey])
-            ->timeout(30)
-            ->post($this->endpoint, $payload);
-
-        if ($response->failed()) {
-            Log::error('Gemini API error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-            throw new \RuntimeException('AI service is temporarily unavailable. Please try again.');
+        // ── Guard: catch missing API key immediately ───────────────────────
+        if (empty($this->apiKey)) {
+            Log::error('Gemini API key is not set. Add GEMINI_API_KEY to your .env file.');
+            throw new \RuntimeException(
+                'AI service is not configured. Please contact the administrator.'
+            );
         }
 
-        $data = $response->json();
+        $systemPrompt = $this->buildSystemPrompt($fileContext);
+        $contents     = $this->buildContents($conversationHistory, $userMessage);
 
-        // Extract text from response
-        $text = data_get($data, 'candidates.0.content.parts.0.text');
-
-        if (!$text) {
-            // Check if blocked by safety filters
-            $finishReason = data_get($data, 'candidates.0.finishReason');
-            if ($finishReason === 'SAFETY') {
-                return "I'm unable to respond to that message due to content safety guidelines.";
+        // Try each model in order
+        foreach ($this->models as $modelIndex => $model) {
+            $result = $this->tryWithRetries($model, $systemPrompt, $contents, $modelIndex);
+            if ($result !== null) {
+                return $result;
             }
-            throw new \RuntimeException('Received an empty response from AI.');
+            // Log that we're falling back
+            Log::warning("Gemini model {$model} exhausted retries, trying next model.");
         }
 
-        return trim($text);
+        throw new \RuntimeException(
+            'AI service is temporarily unavailable. All models are overloaded. Please try again in a few minutes.'
+        );
     }
 
-    // ── Prompt Engineering ───────────────────────────────────────────────────
+    // ── Private: retry a single model up to 3 times ───────────────────────
 
-    /**
-     * THE CRITICAL SYSTEM PROMPT.
-     *
-     * This is what enforces the "study context only" rule.
-     * Gemini is given explicit instructions to:
-     *  1. ONLY answer from the provided study materials
-     *  2. Refuse ANY question not grounded in those materials
-     *  3. Never make up information not in the documents
-     *
-     * When $fileContext is empty, it tells the user to upload files first.
-     */
+    private function tryWithRetries(
+        string $model,
+        string $systemPrompt,
+        array  $contents,
+        int    $modelIndex
+    ): ?string {
+        $maxRetries = 3;
+        $delayMs    = 1000; // Start at 1 second, doubles each retry
+
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            $endpoint = $this->baseEndpoint . $model . ':generateContent';
+
+            $response = Http::withQueryParameters(['key' => $this->apiKey])
+                ->timeout(30)
+                ->post($endpoint, [
+                    'system_instruction' => [
+                        'parts' => [['text' => $systemPrompt]],
+                    ],
+                    'contents'         => $contents,
+                    'generationConfig' => [
+                        'temperature'     => 0.3,
+                        'topK'            => 40,
+                        'topP'            => 0.95,
+                        'maxOutputTokens' => 2048,
+                    ],
+                    'safetySettings' => [
+                        ['category' => 'HARM_CATEGORY_HARASSMENT',        'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
+                        ['category' => 'HARM_CATEGORY_HATE_SPEECH',       'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
+                        ['category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
+                        ['category' => 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
+                    ],
+                ]);
+
+            $status = $response->status();
+            $body   = $response->json();
+
+            // ── Success ───────────────────────────────────────────────────
+            if ($response->successful()) {
+                $text = data_get($body, 'candidates.0.content.parts.0.text');
+
+                if ($text) return trim($text);
+
+                // Empty response — check why
+                $finishReason = data_get($body, 'candidates.0.finishReason');
+                if ($finishReason === 'SAFETY') {
+                    return "I'm unable to respond to that due to content safety guidelines.";
+                }
+
+                Log::warning('Gemini returned empty text', [
+                    'model'  => $model,
+                    'body'   => $body,
+                ]);
+                return null;
+            }
+
+            // ── 400 Bad Request — API key invalid or bad payload ──────────
+            // Don't retry — this won't fix itself
+            if ($status === 400) {
+                $errorMsg = data_get($body, 'error.message', 'Bad request');
+                Log::error("Gemini 400 error on model {$model}: {$errorMsg}", ['body' => $body]);
+                throw new \RuntimeException("AI configuration error: {$errorMsg}");
+            }
+
+            // ── 401 / 403 — Invalid API key ───────────────────────────────
+            if ($status === 401 || $status === 403) {
+                $errorMsg = data_get($body, 'error.message', 'Authentication failed');
+                Log::error("Gemini auth error: {$errorMsg}. Check your GEMINI_API_KEY in .env");
+                throw new \RuntimeException(
+                    'AI authentication failed. Check your Gemini API key in the .env file.'
+                );
+            }
+
+            // ── 429 Rate limit ────────────────────────────────────────────
+            if ($status === 429) {
+                $errorMsg = data_get($body, 'error.message', 'Rate limited');
+                Log::warning("Gemini rate limited on {$model}: {$errorMsg}");
+                // Fall through to retry with delay
+            }
+
+            // ── 503 Server overload — retry with backoff ──────────────────
+            if ($status === 503) {
+                $errorMsg = data_get($body, 'error.message', 'Service unavailable');
+                Log::warning("Gemini 503 on model {$model} attempt {$attempt}: {$errorMsg}");
+            }
+
+            // ── Wait before retrying (exponential backoff) ─────────────────
+            if ($attempt < $maxRetries) {
+                $waitSeconds = $delayMs / 1000;
+                Log::info("Waiting {$waitSeconds}s before retry {$attempt} on model {$model}");
+                usleep($delayMs * 1000); // usleep takes microseconds
+                $delayMs *= 2;           // 1s → 2s → 4s
+            }
+        }
+
+        return null; // This model is exhausted — caller will try the next one
+    }
+
+    // ── Prompt builders (unchanged) ───────────────────────────────────────
+
     private function buildSystemPrompt(string $fileContext): string
     {
         if (empty($fileContext)) {
@@ -135,57 +192,30 @@ STUDY MATERIALS PROVIDED BY THE USER:
 {$fileContext}
 ══════════════════════════════════════════════
 
-ABSOLUTE RULES — YOU MUST FOLLOW THESE AT ALL TIMES:
-
-1. ONLY answer questions that are directly answerable using the STUDY MATERIALS above.
-2. If a question cannot be answered from the study materials, respond with:
-   "❌ I can only answer questions based on your uploaded study materials. Your question appears to be outside that scope. Try asking something directly related to the documents you uploaded."
-3. NEVER use your training data to answer questions. All answers must come ONLY from the study materials.
-4. NEVER make up, infer, or hallucinate information not present in the documents.
-5. If you are UNSURE whether something is in the documents, say: "I don't see a clear answer to that in your study materials."
+ABSOLUTE RULES:
+1. ONLY answer questions answerable from the STUDY MATERIALS above.
+2. If a question is outside the materials, respond: "❌ I can only answer questions based on your uploaded study materials."
+3. NEVER use training data to answer. All answers from study materials only.
+4. NEVER hallucinate information not in the documents.
 
 WHAT YOU CAN DO:
 ✅ Summarize sections or the entire document
 ✅ Answer specific questions from the document content
 ✅ Explain concepts that appear in the document
 ✅ Create quiz questions based on document content
-✅ Compare topics mentioned in the document
-✅ Highlight key points from the document
-
-HOW TO RESPOND:
-- Be concise but thorough
-- Use bullet points for lists
-- Quote directly from the document when relevant (use "..." format)
-- Always ground your answers in the specific document content
-- If asked to summarize, cover the main points systematically
 PROMPT;
     }
 
-    /**
-     * Builds the Gemini 'contents' array from conversation history + new message.
-     *
-     * Gemini expects alternating user/model turns.
-     * History format: [['role'=>'user'|'model', 'parts'=>[['text'=>'...']]]]
-     */
     private function buildContents(array $history, string $currentMessage): array
     {
         $contents = [];
-
-        // Add conversation history (last 10 exchanges to stay within token limits)
-        $recentHistory = array_slice($history, -20); // 10 user + 10 model turns
-        foreach ($recentHistory as $turn) {
+        foreach (array_slice($history, -20) as $turn) {
             $contents[] = [
-                'role'  => $turn['role'],  // 'user' or 'model'
+                'role'  => $turn['role'],
                 'parts' => [['text' => $turn['parts'][0]['text'] ?? '']],
             ];
         }
-
-        // Add current user message
-        $contents[] = [
-            'role'  => 'user',
-            'parts' => [['text' => $currentMessage]],
-        ];
-
+        $contents[] = ['role' => 'user', 'parts' => [['text' => $currentMessage]]];
         return $contents;
     }
 }

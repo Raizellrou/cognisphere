@@ -42,6 +42,9 @@ function App() {
           <Route path="/account" element={
             <ProtectedRoute><AccountPage /></ProtectedRoute>
           } />
+          <Route path="/music"    element={
+            <ProtectedRoute><MusicPage /></ProtectedRoute>
+          } /> 
 
           {/* Catch-all: redirect unknown URLs to home */}
           <Route path="*" element={<Navigate to="/" replace />} />

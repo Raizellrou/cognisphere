@@ -1,32 +1,33 @@
 <?php
+// config/services.php
+// Add the spotify block to your existing services.php
 
 return [
-    'mailgun' => [
-        'secret' => env('MAILGUN_SECRET'),
+    // ... existing entries (gemini, firebase, etc.) ...
+
+    // ── Spotify ───────────────────────────────────────────────────────────────
+    // Get credentials at: https://developer.spotify.com/dashboard
+    // Create an app → copy Client ID and Client Secret
+    'spotify' => [
+        'client_id'     => env('SPOTIFY_CLIENT_ID'),
+        'client_secret' => env('SPOTIFY_CLIENT_SECRET'),
     ],
 
-    'postmark' => [
-        'token' => env('POSTMARK_TOKEN'),
-    ],
-
-    'ses' => [
-        'key'    => env('AWS_ACCESS_KEY_ID'),
-        'secret' => env('AWS_SECRET_ACCESS_KEY'),
-        'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
-    ],
-
-    'stripe' => [
-        'public' => env('STRIPE_PUBLIC_KEY'),
-        'secret' => env('STRIPE_SECRET_KEY'),
-    ],
-
+    // ── Gemini (already exists — shown for reference) ─────────────────────────
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
         'model'   => env('GEMINI_MODEL', 'gemini-1.5-flash'),
     ],
 
+    // ── Firebase (already exists — shown for reference) ───────────────────────
     'firebase' => [
         'credentials' => env('FIREBASE_CREDENTIALS', 'storage/app/firebase-service-account.json'),
         'project_id'  => env('FIREBASE_PROJECT_ID'),
     ],
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// .env additions:
+// ─────────────────────────────────────────────────────────────────────────────
+// SPOTIFY_CLIENT_ID=your_client_id_here
+// SPOTIFY_CLIENT_SECRET=your_client_secret_here
