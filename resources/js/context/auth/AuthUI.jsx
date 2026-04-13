@@ -57,8 +57,8 @@ export function InputField({
         autoComplete={autoComplete}
         disabled={disabled}
         className={`
-          w-full bg-[#1a1a1a] text-white rounded-xl px-4 py-3 text-sm
-          outline-none transition-all duration-150 placeholder-gray-600
+          w-full bg-white text-black dark:bg-[#1a1a1a] dark:text-white rounded-xl px-4 py-3 text-sm
+          outline-none transition-all duration-150 placeholder-gray-600 dark:placeholder-gray-400
           disabled:opacity-50 disabled:cursor-not-allowed
           ${error
             ? 'ring-1 ring-red-500/70 bg-red-950/20'
@@ -309,7 +309,7 @@ export function GoogleButton({ onClick, loading, disabled }) {
  */
 export function AuthCard({ title, subtitle, children }) {
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center
+    <div className="min-h-screen bg-white text-black dark:bg-black dark:text-white flex items-center justify-center
                     px-4 py-12">
       {/* Subtle background orb — adds depth without distraction */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -333,8 +333,8 @@ export function AuthCard({ title, subtitle, children }) {
         </div>
 
         {/* Card */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-6
-                        shadow-2xl shadow-black/50">
+        <div className="bg-white border border-[#e5e7eb] dark:bg-[#111] dark:border-[#1e1e1e] rounded-2xl p-6
+                        shadow-2xl shadow-black/5 dark:shadow-black/50">
           {children}
         </div>
       </div>

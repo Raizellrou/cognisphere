@@ -70,7 +70,7 @@ export default function MusicPage() {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-black dark:bg-black dark:text-white">
       <main className="max-w-sm mx-auto px-4 pt-6 pb-28">
 
         {/* ── Header ────────────────────────────────────────────────── */}

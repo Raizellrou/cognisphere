@@ -106,7 +106,7 @@ export default function ChatPage() {
 
   return (
     <div
-      className="min-h-screen bg-black flex"
+      className="min-h-screen bg-white text-black dark:bg-black dark:text-white flex"
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}

@@ -2,6 +2,7 @@
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 
 // Pages
@@ -12,6 +13,7 @@ import CalendarPage from '@/Pages/CalendarPage';
 import ChatPage     from '@/Pages/ChatPage';
 import CardsPage    from '@/Pages/CardsPage';
 import AccountPage  from '@/Pages/AccountPage';
+import MusicPage   from '@/Pages/MusicPage';
 
 import '../css/app.css';   // Tailwind directives: @tailwind base/components/utilities
 
@@ -19,9 +21,10 @@ function App() {
   return (
     // BrowserRouter enables /login, /register, etc.
     <BrowserRouter>
-      {/* AuthProvider wraps everything — provides currentUser everywhere */}
-      <AuthProvider>
-        <Routes>
+      <ThemeProvider>
+        {/* AuthProvider wraps everything — provides currentUser everywhere */}
+        <AuthProvider>
+          <Routes>
           {/* Public routes — accessible without login */}
           <Route path="/login"    element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -50,7 +53,8 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
-    </BrowserRouter>
+    </ThemeProvider>
+  </BrowserRouter>
   );
 }
 

@@ -1,20 +1,16 @@
 /**
- * Dashboard.jsx
- * ─────────────────────────────────────────────────────────────────────────────
- * WHAT'S IMPROVED vs your original:
- *  ✓ Shows verification banner for unverified users (non-blocking)
- *  ✓ Greeting uses userProfile.displayName from Firestore
- *  ✓ Uses getToken() for any future API calls to Laravel
- *  ✓ isNewUser flag available for onboarding flows
- * ─────────────────────────────────────────────────────────────────────────────
+ * Dashboard.jsx — Fixed
+ * Cards are shown/hidden based on visibleCards state from useCardVisibility.
+ * The hook is passed down to BottomNav so CardsManagerModal can toggle them.
  */
 
-import { useAuth }       from '@/context/AuthContext';
-import { useStreak }     from '@/hooks/useStreak';
-import { useTasks }      from '@/hooks/useTasks';
-import { useCountdowns } from '@/hooks/useCountdowns';
+import { useAuth }           from '@/context/AuthContext';
+import { useStreak }         from '@/hooks/useStreak';
+import { useTasks }          from '@/hooks/useTasks';
+import { useCountdowns }     from '@/hooks/useCountdowns';
 import { resendVerificationEmail } from '@/services/firebaseAuthService';
-import { VerificationBanner } from '@/context/auth/AuthUI';
+import { VerificationBanner }      from '@/context/auth/AuthUI';
+import { useCardVisibility }       from '@/hooks/useCardVisibility';
 
 import PomodoroTimer   from '@/components/Dashboard/Pomodorotimer';
 import CalendarWidget  from '@/components/Dashboard/Calendarwidget';
@@ -34,21 +30,21 @@ export default function Dashboard() {
 
   const uid = currentUser?.uid;
 
-  const { streak }                                     = useStreak(uid);
-  const { tasks }                                      = useTasks(uid);
-  const { countdowns, addCountdown, deleteCountdown }  = useCountdowns(uid);
+  const { streak }                                    = useStreak(uid);
+  const { tasks, addTask, toggleTask } = useTasks(uid); 
+  const { countdowns, addCountdown, deleteCountdown } = useCountdowns(uid);
+  const { visibleCards, toggleCard, isLastVisible }   = useCardVisibility();
 
-  const incompleteTasks = tasks.filter(t => !t.done).length;
+  // Guard: visibleCards should always be defined from the hook,
+  // but this ensures we never render with a broken state
+  if (!visibleCards) return null;
+
+  const incompleteTasks = (tasks ?? []).filter(t => !t.done).length;
 
   return (
     <div className="min-h-screen bg-black text-white">
       <main className="max-w-sm mx-auto px-4 pt-6 pb-24">
 
-        {/*
-          Email verification banner.
-          Non-blocking — users can use the app, but are reminded to verify.
-          Hidden once emailVerified = true (Firebase updates this live).
-        */}
         {!emailVerified && (
           <VerificationBanner
             onResend={resendVerificationEmail}
@@ -56,18 +52,58 @@ export default function Dashboard() {
           />
         )}
 
-        <PomodoroTimer />
-        <CalendarWidget taskCount={incompleteTasks} />
-        <StreakWidget streak={streak} />
-        <CountdownWidget
-          countdowns={countdowns}
-          onAdd={addCountdown}
-          onDelete={deleteCountdown}
-        />
-        <MusicWidget />
+        <CardSlot visible={visibleCards.pomodoro}>
+          <PomodoroTimer />
+        </CardSlot>
+
+        <CardSlot visible={visibleCards.calendar}>
+          <CalendarWidget />
+        </CardSlot>
+
+        <CardSlot visible={visibleCards.streak}>
+          <StreakWidget streak={streak} />
+        </CardSlot>
+
+        <CardSlot visible={visibleCards.countdown}>
+          <CountdownWidget
+            countdowns={countdowns ?? []}
+            onAdd={addCountdown}
+            onDelete={deleteCountdown}
+          />
+        </CardSlot>
+
+        <CardSlot visible={visibleCards.music}>
+          <MusicWidget />
+        </CardSlot>
+
         <Footer />
       </main>
-      <BottomNav />
+
+      <BottomNav
+        visibleCards={visibleCards}
+        toggleCard={toggleCard}
+        isLastVisible={isLastVisible}
+      />
     </div>
   );
 }
+
+// ── CardSlot: fade + collapse animation ─────────────────────────────────────
+
+function CardSlot({ visible, children }) {
+  return (
+    <div
+      style={{
+        overflow: 'hidden',
+        maxHeight: visible ? '1000px' : '0px',
+        opacity: visible ? 1 : 0,
+        transition: visible
+          ? 'max-height 300ms ease-in, opacity 300ms ease-in'
+          : 'max-height 300ms ease-out, opacity 200ms ease-out',
+        pointerEvents: visible ? 'auto' : 'none',
+      }}
+    >
+      {children}
+    </div>
+  );
+} 

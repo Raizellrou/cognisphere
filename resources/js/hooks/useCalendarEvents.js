@@ -12,7 +12,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   collection, query, where, onSnapshot,
-  addDoc, deleteDoc, doc, serverTimestamp, orderBy,
+  addDoc, deleteDoc, updateDoc, doc, serverTimestamp, orderBy,
 } from 'firebase/firestore';
 import { db } from '@/firebase';
 
@@ -74,7 +74,15 @@ export function useCalendarEvents(uid, viewYear, viewMonth) {
     await deleteDoc(doc(db, 'users', uid, 'events', eventId));
   }, [uid]);
 
-  // ── Events grouped by date string ───────────────────────────────────────
+  // ── Toggle event done status ────────────────────────────────────────────────────────
+  const toggleEvent = useCallback(async (eventId, currentDone) => {
+    if (!uid) return;
+    await updateDoc(doc(db, 'users', uid, 'events', eventId), {
+      done: !currentDone,
+    });
+  }, [uid]);
+
+  // ── Events grouped by date string ───────────────────────────────────────────────────────────────
   // Returns a Map: "YYYY-MM-DD" → [event, event, ...]
   // Components use this to quickly check if a date has events
   const eventsByDate = events.reduce((acc, ev) => {
@@ -83,5 +91,5 @@ export function useCalendarEvents(uid, viewYear, viewMonth) {
     return acc;
   }, {});
 
-  return { events, eventsByDate, loading, error, addEvent, deleteEvent };
+  return { events, eventsByDate, loading, error, addEvent, deleteEvent, toggleEvent };
 }
