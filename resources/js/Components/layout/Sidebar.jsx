@@ -1,0 +1,454 @@
+/**
+ * Sidebar.jsx
+ * Collapsible left sidebar (~240px expanded, ~64px collapsed, icon-only)
+ * Features:
+ *   - Logo + collapse toggle
+ *   - User section with avatar and profile
+ *   - Nav links (Home, Calendar, Chat)
+ *   - Cards submenu (collapsible, with toggle switches for card visibility)
+ *   - Bottom: Appearance toggle, Feedback, Sign out
+ * Props (optional):
+ *   - visibleCards, toggleCard, isLastVisible from useCardVisibility
+ */
+
+import { useState, useCallback } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { useCardVisibility } from '@/hooks/useCardVisibility';
+import AccountModal from '@/Pages/AccountPage';
+import FeedbackModal from '@/Components/ui/FeedbackModal';
+import CogniLogo from '@/assets/CogniLogo.png';
+import {
+  ChevronLeft, ChevronRight, MessageCircle, Eye, EyeOff, ChevronDown, ChevronUp,
+} from 'lucide-react';
+
+export default function Sidebar({
+  visibleCards: externalVisibleCards,
+  toggleCard: externalToggleCard,
+  isLastVisible: externalIsLastVisible,
+}) {
+  const { isDark, toggleTheme } = useTheme();
+  const { currentUser, userProfile, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // Local card visibility fallback if not provided
+  const {
+    visibleCards: localVisibleCards,
+    toggleCard: localToggleCard,
+    isLastVisible: localIsLastVisible,
+  } = useCardVisibility();
+
+  const visibleCards = externalVisibleCards || localVisibleCards;
+  const toggleCard = externalToggleCard || localToggleCard;
+  const isLastVisible = externalIsLastVisible || localIsLastVisible;
+
+  const [collapsed, setCollapsed] = useState(false);
+  const [cardsOpen, setCardsOpen] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  const handleSignOut = useCallback(async () => {
+    await logout();
+    navigate('/login');
+  }, [logout, navigate]);
+
+  // Extract user initials
+  const getInitials = () => {
+    if (userProfile?.displayName) {
+      return userProfile.displayName
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return currentUser?.email?.[0]?.toUpperCase() || 'U';
+  };
+
+  const userJoinedDate = userProfile?.createdAt?.toDate
+    ? userProfile.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : 'Member';
+
+  // Colors
+  const colors = isDark
+    ? {
+        bg: '#111827',
+        border: 'rgba(255,255,255,0.07)',
+        textPrimary: '#ffffff',
+        textSecondary: 'rgba(255,255,255,0.6)',
+        textMuted: 'rgba(255,255,255,0.55)',
+        hoverBg: 'rgba(255,255,255,0.07)',
+        activeBg: 'rgba(28,158,249,0.12)',
+        activeBorder: '#1C9EF9',
+      }
+    : {
+        bg: '#ffffff',
+        border: '#e5e7eb',
+        textPrimary: '#111827',
+        textSecondary: '#4b5563',
+        textMuted: '#6b7280',
+        hoverBg: '#f3f4f6',
+        activeBg: 'rgba(28,158,249,0.08)',
+        activeBorder: '#1C9EF9',
+      };
+
+  const sidebarWidth = collapsed ? 80 : 240;
+  const cardSubmenuItems = [
+    { key: 'pomodoro', label: 'Timer', icon: 'timer-icon' },
+    { key: 'calendar', label: 'Heatmap', icon: 'home-icon' },
+    { key: 'music', label: 'Focus Music', icon: 'music-icon' },
+    { key: 'countdown', label: 'Calendar', icon: 'calendar-icon' },
+    { key: 'streak', label: 'Streak', icon: 'tick-square-icon' },
+  ];
+
+  return (
+    <>
+      {/* Sidebar */}
+      <aside
+        style={{
+          width: sidebarWidth,
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          flexShrink: 0,
+          backgroundColor: colors.bg,
+          borderRight: `1px solid ${colors.border}`,
+          transition: 'width 300ms ease-in-out',
+        }}
+      >
+        {/* ── Logo Section ─ */}
+        <div
+          style={{
+            flexShrink: 0,
+            padding: '16px 12px',
+            borderBottom: `1px solid ${colors.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <img src={CogniLogo} alt="Cognisphere" style={{ width: 28, height: 28, borderRadius: 6 }} />
+            {!collapsed && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: colors.textPrimary, whiteSpace: 'nowrap' }}>
+                Cognisphere
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: colors.textMuted,
+            }}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
+        </div>
+
+        {/* ── User Section ─ */}
+        <button
+          onClick={() => setShowAccount(true)}
+          style={{
+            flexShrink: 0,
+            padding: '12px',
+            borderBottom: `1px solid ${colors.border}`,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            justifyContent: collapsed ? 'center' : 'flex-start',
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              backgroundColor: '#1C9EF9',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 11,
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
+            {getInitials()}
+          </div>
+          {!collapsed && (
+            <div style={{ minWidth: 0, textAlign: 'left' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {userProfile?.displayName || currentUser?.email?.split('@')[0] || 'User'}
+              </div>
+              <div style={{ fontSize: 10, color: colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentUser?.email}
+              </div>
+              <div style={{ fontSize: 9, color: colors.textMuted, marginTop: 2 }}>
+                Member since {userJoinedDate}
+              </div>
+            </div>
+          )}
+        </button>
+
+        {/* ── Nav Links ─ */}
+        <nav style={{ flex: 1, overflow: 'hidden', padding: '8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <NavItem
+            to="/"
+            icon="/icons/home-icon/Property 1=linear.png"
+            label="Home"
+            collapsed={collapsed}
+            isDark={isDark}
+            colors={colors}
+          />
+          <NavItem
+            to="/calendar"
+            icon="/icons/calendar-icon/Property 1=linear.png"
+            label="Calendahr"
+            collapsed={collapsed}
+            isDark={isDark}
+            colors={colors}
+          />
+          <NavItem
+            to="/chat"
+            icon="/icons/message-icon/Property 1=linear.png"
+            label="Chat"
+            collapsed={collapsed}
+            isDark={isDark}
+            colors={colors}
+          />
+
+          {/* ── Cards Submenu ─ */}
+          <div style={{ marginTop: 8, borderTop: `1px solid ${colors.border}`, paddingTop: 8 }}>
+            <button
+              onClick={() => setCardsOpen(!cardsOpen)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'space-between',
+                color: colors.textSecondary,
+                fontSize: 12,
+                fontWeight: 500,
+                borderRadius: 8,
+                transition: 'background 200ms ease, color 200ms ease',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = colors.hoverBg)}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img
+                  src="/icons/layer-icon/Property 1=linear.png"
+                  alt="Cards"
+                  style={{ width: 16, height: 16, filter: isDark ? 'invert(1)' : 'none' }}
+                />
+                {!collapsed && <span>Cards</span>}
+              </div>
+              {!collapsed && (cardsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+            </button>
+
+            {/* Submenu items */}
+            {cardsOpen && !collapsed && (
+              <div style={{ marginTop: 4, paddingLeft: 8 }}>
+                {cardSubmenuItems.map(({ key, label, icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => toggleCard(key)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      color: colors.textSecondary,
+                      fontSize: 11,
+                      borderRadius: 6,
+                      transition: 'background 200ms ease',
+                      marginBottom: 2,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = colors.hoverBg)}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <img
+                      src={`/icons/${icon}/Property 1=linear.png`}
+                      alt={label}
+                      style={{
+                        width: 14,
+                        height: 14,
+                        filter: isDark ? 'invert(1)' : 'none',
+                        opacity: visibleCards[key] ? 1 : 0.5,
+                      }}
+                    />
+                    <span>{label}</span>
+                    {visibleCards[key] ? (
+                      <Eye size={12} style={{ marginLeft: 'auto' }} />
+                    ) : (
+                      <EyeOff size={12} style={{ marginLeft: 'auto', opacity: 0.4 }} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </nav>
+
+        {/* ── Bottom Section ─ */}
+        <div
+          style={{
+            flexShrink: 0,
+            padding: '12px 8px',
+            borderTop: `1px solid ${colors.border}`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+          }}
+        >
+          {/* Appearance toggle */}
+          <button
+            onClick={toggleTheme}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: 8,
+              color: colors.textSecondary,
+              fontSize: 12,
+              borderRadius: 8,
+              transition: 'background 200ms ease',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = colors.hoverBg)}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <img
+              src={`/icons/${isDark ? 'moon-icon' : 'sun-icon'}/Property 1=linear.png`}
+              alt="Theme"
+              style={{ width: 16, height: 16, filter: isDark ? 'invert(1)' : 'none' }}
+            />
+            {!collapsed && <span>{isDark ? 'Dark' : 'Light'}</span>}
+          </button>
+
+          {/* Feedback */}
+          <button
+            onClick={() => setShowFeedback(true)}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: 8,
+              color: colors.textSecondary,
+              fontSize: 12,
+              borderRadius: 8,
+              transition: 'background 200ms ease',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = colors.hoverBg)}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <MessageCircle size={16} />
+            {!collapsed && <span>Feedback</span>}
+          </button>
+
+          {/* Sign out */}
+          <button
+            onClick={handleSignOut}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: 8,
+              color: '#ef4444',
+              fontSize: 12,
+              borderRadius: 8,
+              transition: 'background 200ms ease',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)')}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <img
+              src="/icons/arrow-icon/Property 1=linear.png"
+              alt="Sign out"
+              style={{ width: 16, height: 16, filter: isDark ? 'invert(1)' : 'none' }}
+            />
+            {!collapsed && <span>Sign out</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Modals */}
+      <AccountModal isOpen={showAccount} onClose={() => setShowAccount(false)} />
+      <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
+    </>
+  );
+}
+
+// ── NavItem helper ─────────────────────────────────────────────────────────
+
+function NavItem({ to, icon, label, collapsed, isDark, colors }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === '/'}
+      style={({ isActive }) => ({
+        padding: '10px 12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        borderRadius: 8,
+        textDecoration: 'none',
+        color: isActive ? colors.textPrimary : colors.textSecondary,
+        backgroundColor: isActive ? colors.activeBg : 'transparent',
+        borderLeft: isActive ? `2px solid ${colors.activeBorder}` : '2px solid transparent',
+        fontSize: 12,
+        fontWeight: isActive ? 600 : 500,
+        transition: 'background 200ms ease, color 200ms ease, border 200ms ease',
+        cursor: 'pointer',
+      })}
+    >
+      <img
+        src={icon}
+        alt={label}
+        style={{
+          width: 16,
+          height: 16,
+          filter: isDark ? 'invert(1)' : 'none',
+        }}
+      />
+      {!collapsed && <span>{label}</span>}
+    </NavLink>
+  );
+}

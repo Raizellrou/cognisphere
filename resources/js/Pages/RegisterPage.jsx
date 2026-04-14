@@ -17,6 +17,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+import CogniLogo from '@/assets/CogniLogo.png';
 import {
   registerWithEmail,
   loginWithGoogle,
@@ -38,6 +40,7 @@ import {
 
 export default function RegisterPage() {
   const { currentUser } = useAuth();
+  const { isDark } = useTheme();
   const navigate        = useNavigate();
 
   // Already logged in → go to dashboard
@@ -124,11 +127,51 @@ export default function RegisterPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
 
+  // Logo component with animations and dark mode container
+  const logoElement = (
+    <div style={{
+      background: isDark ? 'rgba(255,255,255,0.08)' : 'transparent',
+      borderRadius: '20px',
+      padding: isDark ? '10px' : '0',
+      display: 'inline-block',
+    }}>
+      <img
+        src={CogniLogo}
+        alt="Cognisphere Logo"
+        className="logo-animated"
+        style={{
+          width: '72px',
+          height: '72px',
+          display: 'block',
+          margin: '0 auto',
+          mixBlendMode: 'normal',
+          borderRadius: '16px',
+        }}
+      />
+    </div>
+  );
+
   return (
-    <AuthCard
-      title="Create Account"
-      subtitle="Start your Cognisphere journey"
-    >
+    <>
+      <style>{`
+        @keyframes logoEntrance {
+          from { opacity: 0; transform: translateY(12px) scale(0.92); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes logoFloat {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-4px); }
+        }
+        .logo-animated {
+          animation: logoEntrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, logoFloat 3s ease-in-out 0.6s infinite;
+        }
+      `}</style>
+      <AuthCard
+        title="Create Account"
+        subtitle="Start your Cognisphere journey"
+        logo={logoElement}
+        isDark={isDark}
+      >
       {submitError && (
         <AlertBanner
           type="error"
@@ -258,5 +301,6 @@ export default function RegisterPage() {
         </p>
       </div>
     </AuthCard>
+    </>
   );
 }

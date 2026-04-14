@@ -1,80 +1,126 @@
-import { useState } from "react";
-
 /**
- * MusicWidget Component
- * A minimal music player with play/pause and next track controls.
- * Firebase integration: replace playlist state with Firestore "playlists" collection.
- * For real audio playback, integrate with the HTML Audio API or a service like Spotify.
+ * Musicwidget.jsx — Redesigned
+ * Music player with track info, play/pause, next. Glassmorphism card.
+ * Firebase: replace playlist with real data from useMusic hook.
  */
 
-// Placeholder playlist — Firebase: fetch from Firestore
+import { useState } from 'react';
+import { useTheme } from '@/context/ThemeContext';
+import { Music2, Pause, Play } from 'lucide-react';
+
 const DEFAULT_PLAYLIST = [
-  { id: 1, title: "Music 1", artist: "Artist 1" },
-  { id: 2, title: "Music 2", artist: "Artist 2" },
-  { id: 3, title: "Music 3", artist: "Artist 3" },
+  { id: 1, title: 'Music 1', artist: 'Artist 1' },
+  { id: 2, title: 'Music 2', artist: 'Artist 2' },
+  { id: 3, title: 'Music 3', artist: 'Artist 3' },
 ];
 
 export default function MusicWidget({ playlist = DEFAULT_PLAYLIST }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const { isDark } = useTheme();
+  const [idx, setIdx]       = useState(0);
+  const [playing, setPlay]  = useState(false);
 
-  const current = playlist[currentIndex] || playlist[0];
+  const current = playlist[idx] || playlist[0];
 
   const handleNext = () => {
-    setCurrentIndex((i) => (i + 1) % playlist.length);
-    setPlaying(false);
+    setIdx(i => (i + 1) % playlist.length);
+    setPlay(false);
   };
 
-  const handlePlayPause = () => setPlaying((p) => !p);
-
   return (
-    <div className="bg-[#1a1a1a] rounded-2xl p-5 mb-4">
+    <div style={{
+      background: isDark ? 'rgba(28,28,30,0.8)' : '#ffffff',
+      backdropFilter: 'blur(12px)',
+      borderRadius: 20,
+      padding: 16,
+      marginBottom: 12,
+      border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e5e7eb',
+    }}>
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-        </svg>
-        <span className="text-white text-xs font-bold tracking-widest uppercase">Music</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Music2 width={16} height={16} strokeWidth={1.8} color="#1C9EF9" />
+          <span style={{ color: isDark ? '#fff' : '#111827', fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+            Music
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: isDark ? 'rgba(255,255,255,0.4)' : '#6b7280', fontSize: 12 }}>{current.title}</span>
+          <button
+            onClick={handleNext}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#fff' : '#111827', fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 8, background: isDark ? 'rgba(255,255,255,0.07)' : '#f8fafc', transition: 'background 150ms ease' }}
+          >
+            Next
+          </button>
+        </div>
       </div>
 
-      {/* Track info & Next button */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-gray-400 text-xs">{current.title}</span>
-        <button
-          onClick={handleNext}
-          className="text-white text-xs font-semibold hover:text-gray-300 transition-colors"
-        >
-          Next
-        </button>
-      </div>
+      {/* Player area */}
+      <div style={{
+        background: isDark ? 'rgba(0,0,0,0.3)' : '#f8fafc',
+        borderRadius: 14,
+        aspectRatio: '16/9',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #d1d5db',
+      }}>
+        {/* Subtle animated gradient bg */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: isDark ? 'radial-gradient(ellipse at 30% 60%, rgba(10,132,255,0.08) 0%, transparent 70%)' : 'radial-gradient(ellipse at 30% 60%, rgba(10,132,255,0.04) 0%, transparent 70%)',
+        }} />
 
-      {/* Player card */}
-      <div className="bg-[#2a2a2a] rounded-xl aspect-video flex items-center justify-center relative overflow-hidden">
-        {/* Album art placeholder gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#2a2a2a] to-[#111] opacity-80" />
+        {/* Waveform decorative lines */}
+        {playing && (
+          <div style={{ position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 3, alignItems: 'flex-end' }}>
+            {[4,8,12,7,10,5,9,6,11,8,4].map((h, i) => (
+              <div key={i} style={{
+                width: 3, height: h * 2,
+                background: 'rgba(10,132,255,0.6)',
+                borderRadius: 2,
+                animation: `wave ${0.5 + i * 0.07}s ease-in-out infinite alternate`,
+              }} />
+            ))}
+          </div>
+        )}
 
         {/* Play/Pause button */}
         <button
-          onClick={handlePlayPause}
-          className="relative z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition-all duration-150 active:scale-95"
+          onClick={() => setPlay(p => !p)}
+          style={{
+            position: 'relative', zIndex: 1,
+            width: 52, height: 52, borderRadius: '50%',
+            background: isDark ? 'rgba(255,255,255,0.08)' : '#f8fafc',
+            backdropFilter: 'blur(8px)',
+            border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid #d1d5db',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: isDark ? '#fff' : '#111827', transition: 'background 150ms ease, transform 150ms ease',
+          }}
+          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.93)'}
+          onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
         >
-          {playing ? (
-            // Pause icon
-            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-            </svg>
-          ) : (
-            // Play icon
-            <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          )}
+          {playing
+            ? <Pause width={20} height={20} strokeWidth={2} fill="currentColor" />
+            : <Play width={20} height={20} strokeWidth={2} fill="currentColor" style={{ marginLeft: 2 }} />
+          }
         </button>
       </div>
 
-      {/* Track subtitle */}
-      <p className="text-gray-600 text-xs text-center mt-2">{current.artist}</p>
+      {/* Artist */}
+      <p style={{ color: isDark ? 'rgba(255,255,255,0.3)' : '#6b7280', fontSize: 11, textAlign: 'center', marginTop: 8 }}>{current.artist}</p>
+
+      {/* CSS for waveform animation */}
+      <style>{`
+        @keyframes wave {
+          from { transform: scaleY(0.5); }
+          to   { transform: scaleY(1); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes wave { from, to { transform: none; } }
+        }
+      `}</style>
     </div>
   );
 }

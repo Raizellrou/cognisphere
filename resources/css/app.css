@@ -1,3 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Global resets ─────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  color-scheme: light;
+}
+
+:root {
+  --bg: #000000;
+  --surface: #1a1a1a;
+  --text: #ffffff;
+  --muted: #a0a0a0;
+  --border: #2a2a2a;
+  --panel: rgba(255,255,255,0.05);
+  --accent: #1C9EF9;
+  --nav-bg: rgba(255,255,255,0.05);
+  --nav-inactive: rgba(255,255,255,0.6);
+  --toggle-on: #1C9EF9;
+  --toggle-off: #111827;
+  --card-bg: #1a1a1a;
+}
+
+html:not(.dark) {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --text: #000000;
+  --muted: #4b5563;
+  --border: #e5e7eb;
+  --panel: rgba(15,23,42,0.04);
+  --accent: #1C9EF9;
+  --nav-bg: #ffffff;
+  --nav-inactive: #9ca3af;
+  --toggle-on: #1C9EF9;
+  --toggle-off: #111827;
+  --card-bg: #ffffff;
+}
+
+html, body {
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+html:not(.dark) .bg-black,
+html:not(.dark) [class*='bg-[#000]'],
+html:not(.dark) [class*='bg-[#111]'],
+html:not(.dark) [class*='bg-[#0a0a0a]'],
+html:not(.dark) [class*='bg-[#1a1a1a]'],
+html:not(.dark) [class*='bg-[#0d1a0e]'] {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .text-white {
+  color: #111827 !important;
+}
+
+html:not(.dark) .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+html:not(.dark) .text-gray-600 {
+  color: #4b5563 !important;
+}
+
+html:not(.dark) .text-gray-700 {
+  color: #374151 !important;
+}
+
+html:not(.dark) .border-[#1e1e1e],
+html:not(.dark) .border-[#2a2a2a],
+html:not(.dark) .border-[#111],
+html:not(.dark) .border-white,
+html:not(.dark) [class*='border-[#1e1e1e]'],
+html:not(.dark) [class*='border-[#2a2a2a]'],
+html:not(.dark) [class*='border-[#111]'] {
+  border-color: rgba(0,0,0,0.12) !important;
+}
+
+/* ── Shared animation keyframes ─────────────────────────────────────────── */
+
+/* Modal slide-up — used by SlideUpModal.jsx */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Notification progress bar */
+@keyframes notif-progress {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+/* Waveform bars */
+@keyframes wave {
+  from { transform: scaleY(0.5); }
+  to   { transform: scaleY(1.2); }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar            { width: 4px; height: 4px; }
+::-webkit-scrollbar-track      { background: transparent; }
+::-webkit-scrollbar-thumb      { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover{ background: rgba(255,255,255,0.2); }
+
+/* ── Date input dark mode ──────────────────────────────────────────────── */
+input[type="date"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}

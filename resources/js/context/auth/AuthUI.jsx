@@ -57,8 +57,8 @@ export function InputField({
         autoComplete={autoComplete}
         disabled={disabled}
         className={`
-          w-full bg-[#1a1a1a] text-white rounded-xl px-4 py-3 text-sm
-          outline-none transition-all duration-150 placeholder-gray-600
+          w-full bg-white text-black dark:bg-[#1a1a1a] dark:text-white rounded-xl px-4 py-3 text-sm
+          outline-none transition-all duration-150 placeholder-gray-600 dark:placeholder-gray-400
           disabled:opacity-50 disabled:cursor-not-allowed
           ${error
             ? 'ring-1 ring-red-500/70 bg-red-950/20'
@@ -114,8 +114,19 @@ export function PasswordInput({
         <button
           type="button"
           onClick={() => setVisible(v => !v)}
-          className="absolute right-3 top-3 text-gray-500 hover:text-gray-300
-                     transition-colors p-0.5"
+          className="text-gray-500 hover:text-gray-300 transition-colors"
+          style={{
+            position: 'absolute',
+            right: '14px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '4px',
+          }}
           aria-label={visible ? 'Hide password' : 'Show password'}
         >
           {visible ? (
@@ -306,10 +317,12 @@ export function GoogleButton({ onClick, loading, disabled }) {
 /**
  * Page wrapper with Cognisphere branding + consistent layout.
  * Both Login and Register import this so the "frame" is identical.
+ * Accepts optional logo prop — if provided, renders it instead of the "C".
+ * Accepts isDark prop to style title/subtitle for dark mode.
  */
-export function AuthCard({ title, subtitle, children }) {
+export function AuthCard({ title, subtitle, logo, isDark, children }) {
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center
+    <div className="min-h-screen bg-white text-black dark:bg-black dark:text-white flex items-center justify-center
                     px-4 py-12">
       {/* Subtle background orb — adds depth without distraction */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -318,23 +331,36 @@ export function AuthCard({ title, subtitle, children }) {
       </div>
 
       <div className="w-full max-w-sm relative">
-        {/* Brand mark */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-10 h-10
-                          bg-white rounded-xl mb-3">
-            <span className="text-black font-black text-lg">C</span>
-          </div>
-          <h1 className="text-white text-2xl font-black tracking-tight">
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
-          )}
-        </div>
-
         {/* Card */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-6
-                        shadow-2xl shadow-black/50">
+        <div className="bg-white border border-[#e5e7eb] dark:bg-[#111] dark:border-[#1e1e1e] rounded-2xl p-6
+                        shadow-2xl shadow-black/5 dark:shadow-black/50">
+          {/* Logo, title, subtitle inside card at top — centered */}
+          {(logo || title || subtitle) && (
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              {logo && (
+                <div style={{ marginBottom: '12px' }}>
+                  {logo}
+                </div>
+              )}
+              {title && (
+                <h1 style={{
+                  color: isDark ? '#ffffff' : '#000000',
+                  fontSize: '24px',
+                  fontWeight: '900',
+                  letterSpacing: '-0.03em',
+                }}>
+                  {title}
+                </h1>
+              )}
+              {subtitle && (
+                <p style={{
+                  color: isDark ? 'rgba(255,255,255,0.55)' : '#6b7280',
+                  fontSize: '14px',
+                  marginTop: '4px',
+                }}>{subtitle}</p>
+              )}
+            </div>
+          )}
           {children}
         </div>
       </div>
