@@ -1,18 +1,20 @@
 /**
- * CalendarPage.jsx — Redesigned
+ * CalendarPage.jsx — Redesigned with desktop layout support
  * Full monthly calendar. Glassmorphism cards, blue accent for today,
  * task list with green/blue states. Add task via SlideUpModal.
- * All Firebase hook logic preserved unchanged.
+ * Desktop: Two-column layout with calendar + Focus Tasks panel
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth }            from '@/context/AuthContext';
 import { useTheme }           from '@/context/ThemeContext';
 import { useCalendarEvents }  from '@/hooks/useCalendarEvents';
+import { useTasks }           from '@/hooks/useTasks';
 import EventModal             from '@/components/calendar/EventModal';
+import DesktopLayout          from '@/Layouts/DesktopLayout';
 import BottomNav              from '@/components/layout/BottomNav';
 import SlideUpModal           from '@/components/ui/SlideUpModal';
-import { Plus, Trash2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const DAY_LABELS  = ['S','M','T','W','T','F','S'];
 const MONTH_NAMES = ['January','February','March','April','May','June',
@@ -26,11 +28,30 @@ function toDateStr(date) {
   return `${y}-${mm}-${dd}`;
 }
 
+// ── Desktop breakpoint hook ─────────────────────────────────────────────────
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth >= 1024;
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const handler = (e) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  return isDesktop;
+}
+
 export default function CalendarPage() {
   const { currentUser } = useAuth();
   const { isDark } = useTheme();
   const uid   = currentUser?.uid;
   const today = new Date();
+  const isDesktop = useIsDesktop();
+  const [showTaskPanel, setShowTaskPanel] = useState(true);
 
   const colors = isDark
     ? {
@@ -75,6 +96,8 @@ export default function CalendarPage() {
   const { eventsByDate, loading, addEvent, deleteEvent, toggleEvent } =
     useCalendarEvents(uid, viewYear, viewMonth);
 
+  const { tasks, addTask, toggleTask, deleteTask } = useTasks(uid);
+
   const { cells } = useMemo(() => {
     const firstDay    = new Date(viewYear, viewMonth, 1).getDay();
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -111,6 +134,210 @@ export default function CalendarPage() {
         weekday: 'long', month: 'long', day: 'numeric',
       })
     : '';
+
+  // ── Desktop layout ───────────────────────────────────────────────────────
+  if (isDesktop) {
+    return (
+      <DesktopLayout>
+        <div className="flex flex-1 overflow-hidden bg-[#f8fafc] dark:bg-[#0a0a0a]">
+          {/* Left: Calendar */}
+          <div className="flex-1 overflow-y-auto p-6 border-r border-[#e5e7eb] dark:border-[rgba(255,255,255,0.07)]">
+            <CalendarComponent
+              viewYear={viewYear}
+              viewMonth={viewMonth}
+              prevMonth={prevMonth}
+              nextMonth={nextMonth}
+              cells={cells}
+              today={today}
+              selected={selected}
+              toDateStr={toDateStr}
+              makeDateStr={makeDateStr}
+              isToday={isToday}
+              isSelected={isSelected}
+              handleDayClick={handleDayClick}
+              eventsByDate={eventsByDate}
+              colors={colors}
+              isDark={isDark}
+            />
+          </div>
+
+          {/* Right: Focus Tasks panel (300px fixed) */}
+          {showTaskPanel && (
+            <div
+              style={{
+                width: 300,
+                borderLeft: `1px solid ${colors.border}`,
+                backgroundColor: colors.pageBg,
+                display: 'flex',
+                flexDirection: 'column',
+                flexShrink: 0,
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  flexShrink: 0,
+                  padding: '16px',
+                  borderBottom: `1px solid ${colors.border}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <p style={{ fontSize: 13, fontWeight: 700, color: colors.textPrimary }}>
+                  🗒️ Focus Tasks
+                </p>
+                <button
+                  onClick={() => setShowTaskPanel(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: colors.textMuted,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Filter chips */}
+              <div style={{ flexShrink: 0, padding: '12px 16px', display: 'flex', gap: 8, overflow: 'x-auto' }}>
+                <button
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 12,
+                    border: `1px solid ${colors.border}`,
+                    backgroundColor: 'transparent',
+                    color: colors.textMuted,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  All Tasks
+                </button>
+                <button
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 12,
+                    border: `1px solid ${colors.border}`,
+                    backgroundColor: 'transparent',
+                    color: colors.textMuted,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  All Tags
+                </button>
+              </div>
+
+              {/* + Add Task button */}
+              <button
+                onClick={() => handleAddEvent(parseInt(selected.split('-')[2]))}
+                style={{
+                  margin: '0 12px',
+                  marginTop: 8,
+                  padding: '10px 12px',
+                  width: 'calc(100% - 24px)',
+                  backgroundColor: '#1C9EF9',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <Plus size={14} />
+                Add Task
+              </button>
+
+              {/* Task list */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+                {tasks && tasks.length > 0 ? (
+                  tasks.map(task => (
+                    <div
+                      key={task.id}
+                      style={{
+                        padding: '10px 12px',
+                        marginBottom: 8,
+                        borderRadius: 6,
+                        backgroundColor: task.done ? 'rgba(34,197,94,0.12)' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={task.done}
+                        onChange={() => toggleTask(task.id, !task.done)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span
+                        style={{
+                          flex: 1,
+                          fontSize: 12,
+                          color: task.done ? colors.textMuted : colors.textPrimary,
+                          textDecoration: task.done ? 'line-through' : 'none',
+                        }}
+                      >
+                        {task.title}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: colors.textMuted,
+                        }}
+                      >
+                        {task.done ? '1/1' : '0/1'}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 24 }}>
+                    No tasks yet
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Toggle button when panel is closed */}
+          {!showTaskPanel && (
+            <button
+              onClick={() => setShowTaskPanel(true)}
+              style={{
+                width: 48,
+                borderLeft: `1px solid ${colors.border}`,
+                backgroundColor: colors.pageBg,
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: colors.textMuted,
+              }}
+              title="Show Focus Tasks"
+            >
+              📋
+            </button>
+          )}
+        </div>
+      </DesktopLayout>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MOBILE LAYOUT (existing)
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ minHeight: '100vh', background: colors.pageBg, color: colors.textPrimary }}>
@@ -149,53 +376,58 @@ export default function CalendarPage() {
               <button onClick={prevMonth} style={{ width: 32, height: 32, borderRadius: 10, background: colors.buttonBg, border: `1px solid ${colors.border}`, color: '#1C9EF9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ChevronLeft width={14} height={14} strokeWidth={2.2} stroke="currentColor" />
               </button>
-              <button onClick={nextMonth} style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.07)', color: '#1C9EF9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button onClick={nextMonth} style={{ width: 32, height: 32, borderRadius: 10, background: colors.buttonBg, border: `1px solid ${colors.border}`, color: '#1C9EF9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ChevronRight width={14} height={14} strokeWidth={2.2} stroke="currentColor" />
               </button>
             </div>
           </div>
 
           {/* Day labels */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
-            {DAY_LABELS.map((d, i) => (
-              <div key={i} style={{ textAlign: 'center', color: colors.label, fontSize: 12, fontWeight: 600, padding: '4px 0' }}>{d}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 12 }}>
+            {DAY_LABELS.map(label => (
+              <div key={label} style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: colors.label }}>
+                {label}
+              </div>
             ))}
           </div>
 
-          {/* Day cells */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', rowGap: 4 }}>
+          {/* Calendar grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
             {cells.map((day, i) => {
-              if (!day) return <div key={`e-${i}`} />;
-              const dateStr   = makeDateStr(day);
-              const hasEvents = !!(eventsByDate[dateStr]?.length);
-              const todayFlag = isToday(day);
-              const selFlag   = isSelected(day);
-
+              if (day === null) {
+                return <div key={`empty-${i}`} />;
+              }
+              const dateStr = makeDateStr(day);
               return (
-                <div key={dateStr} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 40 }}>
-                  <button
-                    onClick={() => handleDayClick(day)}
-                    style={{
-                      width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer',
-                      background: todayFlag
-                        ? '#1C9EF9'
-                        : selFlag ? colors.selectedBg : 'transparent',
-                      color: todayFlag ? '#fff' : colors.textSecondary,
-                      fontSize: 13, fontWeight: todayFlag ? 700 : 400,
-                      transition: 'background 150ms ease',
-                      position: 'relative',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    {day}
-                    {hasEvents && (
-                      <span style={{
-                        position: 'absolute', bottom: 4,
-                        width: 4, height: 4, borderRadius: '50%',
-                        background: todayFlag ? 'rgba(255,255,255,0.7)' : '#1C9EF9',
-                      }} />
-                    )}
-                  </button>
+                <div
+                  key={day}
+                  onClick={() => handleDayClick(day)}
+                  style={{
+                    aspectRatio: '1',
+                    borderRadius: 10,
+                    border: `1px solid ${isSelected(day) ? '#1C9EF9' : colors.border}`,
+                    background: isToday(day) ? 'rgba(28, 158, 249, 0.12)' : isSelected(day) ? colors.selectedBg : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: colors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: isToday(day) ? 700 : 500,
+                    position: 'relative',
+                    transition: 'all 150ms ease',
+                  }}
+                >
+                  {day}
+                  {(eventsByDate[dateStr] || []).length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 4, left: '50%', transform: 'translateX(-50%)',
+                      width: 4, height: 4,
+                      borderRadius: '50%',
+                      background: colors.eventDot,
+                    }} />
+                  )}
                 </div>
               );
             })}
@@ -263,6 +495,147 @@ export default function CalendarPage() {
       <BottomNav />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+// ── CalendarComponent (shared between desktop & mobile) ────────────────────
+
+function CalendarComponent({
+  viewYear,
+  viewMonth,
+  prevMonth,
+  nextMonth,
+  cells,
+  today,
+  selected,
+  toDateStr,
+  makeDateStr,
+  isToday,
+  isSelected,
+  handleDayClick,
+  eventsByDate,
+  colors,
+  isDark,
+}) {
+  return (
+    <div>
+      {/* Month header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: colors.textPrimary, marginBottom: 8 }}>
+          {MONTH_NAMES[viewMonth]}
+        </h1>
+        <p style={{ fontSize: 14, color: colors.textMuted }}>{viewYear}</p>
+      </div>
+
+      {/* Controls */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        <button
+          onClick={() => {
+            // reset to today
+          }}
+          style={{
+            padding: '8px 16px',
+            borderRadius: 8,
+            border: `1px solid ${colors.border}`,
+            backgroundColor: 'transparent',
+            color: colors.textPrimary,
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Today
+        </button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button
+            onClick={prevMonth}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              border: `1px solid ${colors.border}`,
+              backgroundColor: 'transparent',
+              color: '#1C9EF9',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={nextMonth}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              border: `1px solid ${colors.border}`,
+              backgroundColor: 'transparent',
+              color: '#1C9EF9',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Day labels */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginBottom: 12 }}>
+        {DAY_LABELS.map(label => (
+          <div key={label} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: colors.label, marginBottom: 8 }}>
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+        {cells.map((day, i) => {
+          if (day === null) {
+            return <div key={`empty-${i}`} />;
+          }
+          const dateStr = makeDateStr(day);
+          return (
+            <button
+              key={day}
+              onClick={() => handleDayClick(day)}
+              style={{
+                aspectRatio: '1',
+                borderRadius: 12,
+                border: `1px solid ${isSelected(day) ? '#1C9EF9' : colors.border}`,
+                background: isToday(day) ? 'rgba(28, 158, 249, 0.12)' : isSelected(day) ? colors.selectedBg : 'transparent',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: colors.textPrimary,
+                fontSize: 14,
+                fontWeight: isToday(day) ? 700 : 500,
+                position: 'relative',
+                transition: 'all 150ms ease',
+              }}
+            >
+              {day}
+              {(eventsByDate[dateStr] || []).length > 0 && (
+                <div style={{
+                  marginTop: 4,
+                  width: 4,
+                  height: 4,
+                  borderRadius: '50%',
+                  background: '#1C9EF9',
+                }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -42,13 +42,14 @@ export default function BottomNav({ visibleCards, toggleCard, isLastVisible }) {
       `}</style>
 
       <nav
+        className="lg:hidden"
         aria-label="Main navigation"
         style={{
           position: 'fixed',
           bottom: 16,
           left: '50%',
           transform: 'translateX(-50%)',
-          zIndex: 500,
+          zIndex: 100,
           width: 'calc(100% - 32px)',
           maxWidth: 420,
           background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
