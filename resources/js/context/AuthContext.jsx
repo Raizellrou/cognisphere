@@ -108,6 +108,7 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,          // Firebase Auth user object (or null)
     userProfile,          // Firestore profile document data
+    setUserProfile,       // Update userProfile state (e.g., after displayName changes)
     loading,              // True until first auth check completes
     isNewUser,            // True only on first-ever login
     emailVerified: currentUser?.emailVerified ?? false,

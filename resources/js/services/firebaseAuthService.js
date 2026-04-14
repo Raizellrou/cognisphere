@@ -25,7 +25,8 @@ import {
   browserSessionPersistence,
   reload,
 } from 'firebase/auth';
-import { auth } from '@/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/firebase';
 
 const googleProvider = new GoogleAuthProvider();
 // Request additional Google scopes if needed later (e.g. Calendar)
@@ -106,6 +107,30 @@ export async function loginWithGoogle() {
  */
 export async function logout() {
   await signOut(auth);
+}
+
+// ─── DISPLAY NAME UPDATE ───────────────────────────────────────────────────
+
+/**
+ * Updates the user's display name in both Firebase Auth and Firestore.
+ * Called from AccountPage when user saves a new display name.
+ */
+export async function updateDisplayName(user, newName) {
+  const currentUser = auth.currentUser;
+  if (!currentUser) throw new Error('No user is signed in.');
+  
+  // Update Firebase Auth profile
+  await updateProfile(currentUser, { displayName: newName });
+  
+  // Refresh the user object to pick up the new displayName
+  await reload(currentUser);
+  
+  // Update Firestore user document
+  await setDoc(
+    doc(db, 'users', currentUser.uid),
+    { displayName: newName, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
 }
 
 // ─── EMAIL VERIFICATION ────────────────────────────────────────────────────

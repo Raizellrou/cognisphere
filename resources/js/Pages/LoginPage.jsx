@@ -17,6 +17,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+import CogniLogo from '@/assets/CogniLogo.png';
 import {
   loginWithEmail,
   loginWithGoogle,
@@ -39,6 +41,7 @@ import {
 
 export default function LoginPage() {
   const { currentUser } = useAuth();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -54,6 +57,7 @@ export default function LoginPage() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // ── Redirect already-logged-in users ──────────────────────────────────────
   // WHY here and not just in ProtectedRoute:
@@ -139,7 +143,29 @@ export default function LoginPage() {
 
   const isLoading = loadingEmail || loadingGoogle;
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // Logo component with animations and dark mode container
+  const logoElement = (
+    <div style={{
+      background: isDark ? 'rgba(255,255,255,0.08)' : 'transparent',
+      borderRadius: '20px',
+      padding: isDark ? '10px' : '0',
+      display: 'inline-block',
+    }}>
+      <img
+        src={CogniLogo}
+        alt="Cognisphere Logo"
+        className="logo-animated"
+        style={{
+          width: '72px',
+          height: '72px',
+          display: 'block',
+          margin: '0 auto',
+          mixBlendMode: 'normal',
+          borderRadius: '16px',
+        }}
+      />
+    </div>
+  );
 
   // Forgot password sub-view
   if (showForgot) {
@@ -200,14 +226,31 @@ export default function LoginPage() {
 
   // Main login view
   return (
-    <AuthCard
-      title="Cognisphere"
-      subtitle="Focus. Learn. Achieve."
-    >
-      {/* URL param success messages */}
-      {successMessage && (
-        <AlertBanner type="success" message={successMessage} className="mb-4" />
-      )}
+    <>
+      <style>{`
+        @keyframes logoEntrance {
+          from { opacity: 0; transform: translateY(12px) scale(0.92); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes logoFloat {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-4px); }
+        }
+        .logo-animated {
+          animation: logoEntrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, logoFloat 3s ease-in-out 0.6s infinite;
+        }
+      `}</style>
+      <AuthCard
+        title="Cognisphere"
+        subtitle="Focus. Learn. Achieve."
+        logo={logoElement}
+        isDark={isDark}
+      >
+
+        {/* URL param success messages */}
+        {successMessage && (
+          <AlertBanner type="success" message={successMessage} className="mb-4" />
+        )}
 
       {/* Top-level submit error (wrong password, network issue, etc.) */}
       {submitError && (
@@ -233,30 +276,28 @@ export default function LoginPage() {
             disabled={isLoading}
           />
 
-          <div>
-            <PasswordInput
-              id="password"
-              label="Password"
-              placeholder="Your password"
-              value={fields.password}
-              onChange={handleChange('password')}
-              error={errors.password}
-              autoComplete="current-password"
-              disabled={isLoading}
-            />
-            {/* Forgot password link */}
-            <div className="text-right mt-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setForgotEmail(fields.email);
-                  setShowForgot(true);
-                }}
-                className="text-gray-500 hover:text-white text-xs transition-colors"
-              >
-                Forgot password?
-              </button>
-            </div>
+          <PasswordInput
+            id="password"
+            label="Password"
+            placeholder="Your password"
+            value={fields.password}
+            onChange={handleChange('password')}
+            error={errors.password}
+            autoComplete="current-password"
+            disabled={isLoading}
+          />
+          {/* Forgot password link */}
+          <div className="text-right mt-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setForgotEmail(fields.email);
+                setShowForgot(true);
+              }}
+              className="text-gray-500 hover:text-white text-xs transition-colors"
+            >
+              Forgot password?
+            </button>
           </div>
 
           {/* Remember Me */}
@@ -311,5 +352,6 @@ export default function LoginPage() {
         </p>
       </div>
     </AuthCard>
+    </>
   );
 }

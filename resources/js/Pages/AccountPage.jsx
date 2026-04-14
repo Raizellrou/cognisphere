@@ -10,21 +10,35 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { updateDisplayName } from '@/services/firebaseAuthService';
+import FeedbackModal from '@/Components/ui/FeedbackModal';
 
 export default function AccountModal({ isOpen, onClose }) {
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile, setUserProfile, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
   const { isDark: darkMode, toggleTheme } = useTheme();
   const [visible, setVisible] = useState(false);
   const [animating, setAnimating] = useState(false);
   const startYRef = useRef(null);
 
+  // Edit username state
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [editError, setEditError] = useState('');
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
+
+  // Local displayName state for instant UI updates
+  const [localDisplayName, setLocalDisplayName] = useState(userProfile?.displayName || currentUser?.displayName || 'User');
+
+  // Feedback modal state
+  const [showFeedback, setShowFeedback] = useState(false);
+
   const handleToggleTheme = useCallback((e) => {
     e?.preventDefault?.();
     toggleTheme();
   }, [toggleTheme]);
 
-  const displayName = userProfile?.displayName || currentUser?.displayName || 'User';
+  const displayName = localDisplayName;
   const email = currentUser?.email || '';
   const joinedDate = userProfile?.createdAt?.toDate
     ? userProfile.createdAt.toDate().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -36,6 +50,13 @@ export default function AccountModal({ isOpen, onClose }) {
     .slice(0, 2)
     .join('')
     .toUpperCase();
+
+  // Sync local displayName with userProfile when it updates externally
+  useEffect(() => {
+    if (userProfile?.displayName) {
+      setLocalDisplayName(userProfile.displayName);
+    }
+  }, [userProfile?.displayName]);
 
   // ── Animation ────────────────────────────────────────────────────
   useEffect(() => {
@@ -69,6 +90,51 @@ export default function AccountModal({ isOpen, onClose }) {
     setLoggingOut(true);
     try { await logout(); }
     catch { setLoggingOut(false); }
+  };
+
+  // ── Username edit handlers ───────────────────────────────────────
+  const handleEditUsername = () => {
+    setIsEditingUsername(true);
+    setNewUsername(displayName);
+    setEditError('');
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingUsername(false);
+    setNewUsername('');
+    setEditError('');
+  };
+
+  const validateUsername = (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return 'Name cannot be empty.';
+    if (trimmed.length > 40) return 'Name must be 40 characters or less.';
+    return '';
+  };
+
+  const handleSaveUsername = async () => {
+    const error = validateUsername(newUsername);
+    if (error) {
+      setEditError(error);
+      return;
+    }
+
+    setIsSavingUsername(true);
+    setEditError('');
+    try {
+      const trimmedName = newUsername.trim();
+      await updateDisplayName(currentUser, trimmedName);
+      // Update local state immediately for instant UI feedback
+      setLocalDisplayName(trimmedName);
+      // Update context state to persist across component re-renders
+      setUserProfile(prev => ({ ...prev, displayName: trimmedName }));
+      setIsEditingUsername(false);
+      setNewUsername('');
+    } catch (err) {
+      setEditError('Failed to update name. Please try again.');
+    } finally {
+      setIsSavingUsername(false);
+    }
   };
 
   if (!animating) return null;
@@ -208,16 +274,95 @@ export default function AccountModal({ isOpen, onClose }) {
 
         {/* ── Menu Items ─────────────────────────────────────────── */}
         <div style={{ padding: '8px 0' }}>
-          <MenuItem
-            icon={<BellIcon />}
-            label="Notifications"
-            onClick={() => {}}
-          />
-          <MenuItem
-            icon={<EditIcon />}
-            label={`@${displayName}`}
-            onClick={() => {}}
-          />
+          {/* Edit Username Row */}
+          {!isEditingUsername ? (
+            <MenuItem
+              icon={<EditIcon />}
+              label={`@${displayName}`}
+              onClick={handleEditUsername}
+            />
+          ) : (
+            <div style={{ padding: '14px 20px', borderBottom: darkMode ? '1px solid rgba(255,255,255,0.05)' : '#e5e7eb' }}>
+              <input
+                type="text"
+                value={newUsername}
+                onChange={(e) => {
+                  setNewUsername(e.target.value);
+                  if (editError) setEditError('');
+                }}
+                placeholder="Enter new name"
+                disabled={isSavingUsername}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: darkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e5e7eb',
+                  background: darkMode ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                  color: darkMode ? '#ffffff' : '#111827',
+                  fontSize: 14,
+                  marginBottom: editError ? 4 : 12,
+                  fontFamily: 'inherit',
+                  opacity: isSavingUsername ? 0.6 : 1,
+                }}
+              />
+              {editError && (
+                <p style={{ fontSize: 12, color: '#FF453A', marginBottom: 12 }}>
+                  {editError}
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleSaveUsername}
+                  disabled={isSavingUsername}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: '#1C9EF9',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    opacity: isSavingUsername ? 0.7 : 1,
+                  }}
+                >
+                  {isSavingUsername ? (
+                    <span style={{
+                      width: 14, height: 14, borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTop: '2px solid #ffffff',
+                      display: 'inline-block',
+                      animation: 'spin 0.7s linear infinite',
+                    }} />
+                  ) : 'Save'}
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={isSavingUsername}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                    color: darkMode ? '#ffffff' : '#111827',
+                    border: 'none',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    opacity: isSavingUsername ? 0.5 : 1,
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           <MenuItem
             icon={<SignOutIcon />}
             label="Sign out"
@@ -229,7 +374,7 @@ export default function AccountModal({ isOpen, onClose }) {
           <MenuItem
             icon={<FeedbackIcon />}
             label="Feedback"
-            onClick={() => {}}
+            onClick={() => setShowFeedback(true)}
             last
           />
         </div>
@@ -237,6 +382,9 @@ export default function AccountModal({ isOpen, onClose }) {
         {/* Bottom safe area */}
         <div style={{ height: 24 }} />
       </div>
+
+      {/* Feedback Modal */}
+      <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
     </>
   );
 }
@@ -281,15 +429,6 @@ function MenuItem({ icon, label, onClick, labelColor, iconColor, loading, last }
 }
 
 // ── Icons ────────────────────────────────────────────────────────────────────
-
-function BellIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-      <path d="M13.73 21a2 2 0 01-3.46 0"/>
-    </svg>
-  );
-}
 
 function EditIcon() {
   return (
