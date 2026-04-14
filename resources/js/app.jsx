@@ -11,6 +11,7 @@ import Dashboard    from '@/Pages/Dashboard';
 import CalendarPage from '@/Pages/CalendarPage';
 import ChatPage     from '@/Pages/ChatPage';
 import CardsPage    from '@/Pages/CardsPage';
+import MusicPage       from '@/pages/MusicPage';
 import AccountPage  from '@/Pages/AccountPage';
 
 import '../css/app.css';   // Tailwind directives: @tailwind base/components/utilities
