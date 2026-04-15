@@ -6,13 +6,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '@/context/ThemeContext';
-import { Clock, Calendar, Flame, Music2, Eye, EyeOff, X } from 'lucide-react';
+import { Timer, Home, Music2, Calendar, CheckSquare, Eye, EyeOff, X } from 'lucide-react';
 
 const CARD_LIST = [
-  { key: 'pomodoro', label: 'Pomodoro', icon: <Clock width={20} height={20} strokeWidth={1.8} /> },
-  { key: 'calendar', label: 'Calendar', icon: <Calendar width={20} height={20} strokeWidth={1.8} /> },
-  { key: 'streak', label: 'Streak', icon: <Flame width={20} height={20} strokeWidth={1.8} /> },
-  { key: 'countdown', label: 'Countdown', icon: <Clock width={20} height={20} strokeWidth={1.8} /> },
+  { key: 'pomodoro', label: 'Pomodoro', icon: <Timer width={20} height={20} strokeWidth={1.8} /> },
+  { key: 'calendar', label: 'Calendar', icon: <Home width={20} height={20} strokeWidth={1.8} /> },
+  { key: 'streak', label: 'Streak', icon: <CheckSquare width={20} height={20} strokeWidth={1.8} /> },
+  { key: 'countdown', label: 'Countdown', icon: <Calendar width={20} height={20} strokeWidth={1.8} /> },
   { key: 'music', label: 'Music', icon: <Music2 width={20} height={20} strokeWidth={1.8} /> },
 ];
 

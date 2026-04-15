@@ -79,7 +79,7 @@ export default function CalendarWidget() {
       {/* ── Dashboard Card ────────────────────────────────────────── */}
       <div style={{
         background: colors.cardBg, borderRadius: 16, padding: '16px',
-        marginBottom: 16, border: colors.border,
+        border: colors.border,
       }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>

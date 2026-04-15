@@ -1,9 +1,9 @@
 /**
- * Dashboard.jsx — Fixed
+ * Dashboard.jsx
  * Cards are shown/hidden based on visibleCards state from useCardVisibility.
  * The hook is passed down to BottomNav so CardsManagerModal can toggle them.
  *
- * Desktop (lg+): renders with DesktopLayout + sortable card grid
+ * Desktop (lg+): renders with DesktopLayout in fixed grid layout
  * Mobile (< lg): renders existing mobile layout + BottomNav
  */
 
@@ -14,7 +14,7 @@ import { useCountdowns }     from '@/hooks/useCountdowns';
 import { resendVerificationEmail } from '@/services/firebaseAuthService';
 import { VerificationBanner }      from '@/context/auth/AuthUI';
 import { useCardVisibility }       from '@/hooks/useCardVisibility';
-import { useEffect, useState }     from 'react';
+import { useEffect, useState } from 'react';
 
 import DesktopLayout   from '@/Layouts/DesktopLayout';
 import PomodoroTimer   from '@/components/Dashboard/Pomodorotimer';
@@ -42,33 +42,6 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-// ── Card order persistence ──────────────────────────────────────────────────
-const CARD_ORDER_KEY = 'cogni_card_order';
-const DEFAULT_CARD_ORDER = ['pomodoro', 'calendar', 'streak', 'countdown', 'music'];
-
-function loadCardOrder() {
-  try {
-    const stored = localStorage.getItem(CARD_ORDER_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length === DEFAULT_CARD_ORDER.length) {
-        return parsed;
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return DEFAULT_CARD_ORDER;
-}
-
-function saveCardOrder(order) {
-  try {
-    localStorage.setItem(CARD_ORDER_KEY, JSON.stringify(order));
-  } catch {
-    // ignore (localStorage unavailable)
-  }
-}
-
 export default function Dashboard() {
   const {
     currentUser,
@@ -84,7 +57,6 @@ export default function Dashboard() {
   const { countdowns, addCountdown, deleteCountdown } = useCountdowns(uid);
   const { visibleCards, toggleCard, isLastVisible }   = useCardVisibility();
 
-  const [cardOrder, setCardOrder] = useState(() => loadCardOrder());
   const [draggedCard, setDraggedCard] = useState(null);
   const isDesktop = useIsDesktop();
 
@@ -103,25 +75,6 @@ export default function Dashboard() {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e, targetKey) => {
-    e.preventDefault();
-    if (!draggedCard || draggedCard === targetKey) {
-      setDraggedCard(null);
-      return;
-    }
-
-    const draggedIdx = cardOrder.indexOf(draggedCard);
-    const targetIdx = cardOrder.indexOf(targetKey);
-
-    const newOrder = [...cardOrder];
-    newOrder.splice(draggedIdx, 1);
-    newOrder.splice(targetIdx, 0, draggedCard);
-
-    setCardOrder(newOrder);
-    saveCardOrder(newOrder);
-    setDraggedCard(null);
-  };
-
   const handleDragEnd = () => {
     setDraggedCard(null);
   };
@@ -130,7 +83,7 @@ export default function Dashboard() {
   if (isDesktop) {
     return (
       <DesktopLayout sidebarProps={{ visibleCards, toggleCard, isLastVisible }}>
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           {!emailVerified && (
             <VerificationBanner
               onResend={resendVerificationEmail}
@@ -138,38 +91,95 @@ export default function Dashboard() {
             />
           )}
 
-          {/* Cards grid — 3 columns */}
-          <div className="grid grid-cols-3 gap-6 mb-12">
-            {cardOrder.map((cardKey) => {
-              const isVisible = visibleCards[cardKey];
-              if (!isVisible) return null;
-
-              return (
+          {/* Cards layout — 3 columns with flexbox */}
+          <div className="flex gap-3 p-3 items-start">
+            {/* Column 1: Pomodoro */}
+            <div className="flex flex-col gap-3 flex-1">
+              {visibleCards.pomodoro && (
                 <div
-                  key={cardKey}
+                  key="pomodoro"
                   draggable
-                  onDragStart={(e) => handleDragStart(e, cardKey)}
+                  onDragStart={(e) => handleDragStart(e, 'pomodoro')}
                   onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, cardKey)}
                   onDragEnd={handleDragEnd}
                   className={`cursor-move transition-opacity ${
-                    draggedCard === cardKey ? 'opacity-50' : 'opacity-100'
+                    draggedCard === 'pomodoro' ? 'opacity-50' : 'opacity-100'
                   }`}
                 >
-                  {cardKey === 'pomodoro' && <PomodoroTimer />}
-                  {cardKey === 'calendar' && <CalendarWidget />}
-                  {cardKey === 'streak' && <StreakWidget streak={streak} />}
-                  {cardKey === 'countdown' && (
-                    <CountdownWidget
-                      countdowns={countdowns ?? []}
-                      onAdd={addCountdown}
-                      onDelete={deleteCountdown}
-                    />
-                  )}
-                  {cardKey === 'music' && <MusicWidget />}
+                  <PomodoroTimer />
                 </div>
-              );
-            })}
+              )}
+            </div>
+
+            {/* Column 2: Music + Calendar */}
+            <div className="flex flex-col gap-3 flex-1">
+              {visibleCards.music && (
+                <div
+                  key="music"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, 'music')}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                  className={`cursor-move transition-opacity ${
+                    draggedCard === 'music' ? 'opacity-50' : 'opacity-100'
+                  }`}
+                >
+                  <MusicWidget />
+                </div>
+              )}
+
+              {visibleCards.calendar && (
+                <div
+                  key="calendar"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, 'calendar')}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                  className={`cursor-move transition-opacity ${
+                    draggedCard === 'calendar' ? 'opacity-50' : 'opacity-100'
+                  }`}
+                >
+                  <CalendarWidget />
+                </div>
+              )}
+            </div>
+
+            {/* Column 3: Countdown + Streak */}
+            <div className="flex flex-col gap-3 flex-1">
+              {visibleCards.countdown && (
+                <div
+                  key="countdown"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, 'countdown')}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                  className={`cursor-move transition-opacity ${
+                    draggedCard === 'countdown' ? 'opacity-50' : 'opacity-100'
+                  }`}
+                >
+                  <CountdownWidget
+                    countdowns={countdowns ?? []}
+                    onAdd={addCountdown}
+                    onDelete={deleteCountdown}
+                  />
+                </div>
+              )}
+
+              {visibleCards.streak && (
+                <div
+                  key="streak"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, 'streak')}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                  className={`cursor-move transition-opacity ${
+                    draggedCard === 'streak' ? 'opacity-50' : 'opacity-100'
+                  }`}
+                >
+                  <StreakWidget streak={streak} />
+                </div>
+              )}
+            </div>
           </div>
 
           <Footer />
@@ -181,7 +191,7 @@ export default function Dashboard() {
   // ── Render mobile layout (existing) ──────────────────────────────────────
   return (
     <div className="min-h-screen bg-black text-white">
-      <main className="max-w-sm mx-auto px-4 pt-6 pb-24">
+      <main className="max-w-sm mx-auto px-3 pt-3 pb-24 flex flex-col gap-3">
 
         {!emailVerified && (
           <VerificationBanner

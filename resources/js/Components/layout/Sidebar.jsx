@@ -16,11 +16,13 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCardVisibility } from '@/hooks/useCardVisibility';
+import { updateDisplayName } from '@/services/firebaseAuthService';
 import AccountModal from '@/Pages/AccountPage';
 import FeedbackModal from '@/Components/ui/FeedbackModal';
 import CogniLogo from '@/assets/CogniLogo.png';
 import {
-  ChevronLeft, ChevronRight, MessageCircle, Eye, EyeOff, ChevronDown, ChevronUp,
+  ChevronLeft, ChevronRight, Eye, EyeOff, ChevronDown, ChevronUp,
+  Timer, Home, CheckSquare, Calendar, Music2, Edit2,
 } from 'lucide-react';
 
 export default function Sidebar({
@@ -47,6 +49,11 @@ export default function Sidebar({
   const [cardsOpen, setCardsOpen] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [editError, setEditError] = useState('');
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
 
   const handleSignOut = useCallback(async () => {
     await logout();
@@ -69,6 +76,49 @@ export default function Sidebar({
   const userJoinedDate = userProfile?.createdAt?.toDate
     ? userProfile.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     : 'Member';
+
+  const displayName = userProfile?.displayName || currentUser?.email?.split('@')[0] || 'User';
+
+  // Username edit handlers
+  const handleEditUsername = () => {
+    setIsEditingUsername(true);
+    setNewUsername(displayName);
+    setEditError('');
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingUsername(false);
+    setNewUsername('');
+    setEditError('');
+  };
+
+  const validateUsername = (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return 'Name cannot be empty.';
+    if (trimmed.length > 40) return 'Name must be 40 characters or less.';
+    return '';
+  };
+
+  const handleSaveUsername = async () => {
+    const error = validateUsername(newUsername);
+    if (error) {
+      setEditError(error);
+      return;
+    }
+
+    setIsSavingUsername(true);
+    setEditError('');
+    try {
+      const trimmedName = newUsername.trim();
+      await updateDisplayName(currentUser, trimmedName);
+      setIsEditingUsername(false);
+      setNewUsername('');
+    } catch (err) {
+      setEditError('Failed to update name. Please try again.');
+    } finally {
+      setIsSavingUsername(false);
+    }
+  };
 
   // Colors
   const colors = isDark
@@ -95,11 +145,11 @@ export default function Sidebar({
 
   const sidebarWidth = collapsed ? 80 : 240;
   const cardSubmenuItems = [
-    { key: 'pomodoro', label: 'Timer', icon: 'timer-icon' },
-    { key: 'calendar', label: 'Heatmap', icon: 'home-icon' },
-    { key: 'music', label: 'Focus Music', icon: 'music-icon' },
-    { key: 'countdown', label: 'Calendar', icon: 'calendar-icon' },
-    { key: 'streak', label: 'Streak', icon: 'tick-square-icon' },
+    { key: 'pomodoro', label: 'Pomodoro', icon: <Timer size={14} strokeWidth={1.8} /> },
+    { key: 'calendar', label: 'Calendar', icon: <Home size={14} strokeWidth={1.8} /> },
+    { key: 'music', label: 'Music', icon: <Music2 size={14} strokeWidth={1.8} /> },
+    { key: 'countdown', label: 'Countdown', icon: <Calendar size={14} strokeWidth={1.8} /> },
+    { key: 'streak', label: 'Streak', icon: <CheckSquare size={14} strokeWidth={1.8} /> },
   ];
 
   return (
@@ -126,83 +176,253 @@ export default function Sidebar({
             borderBottom: `1px solid ${colors.border}`,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: collapsed ? 'center' : 'space-between',
             gap: 8,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <img src={CogniLogo} alt="Cognisphere" style={{ width: 28, height: 28, borderRadius: 6 }} />
-            {!collapsed && (
-              <span style={{ fontSize: 13, fontWeight: 700, color: colors.textPrimary, whiteSpace: 'nowrap' }}>
-                Cognisphere
-              </span>
-            )}
-          </div>
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 4,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: colors.textMuted,
-            }}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
+          {collapsed ? (
+            // Collapsed state: logo only, centered and clickable to expand
+            <button
+              onClick={() => setCollapsed(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label="Expand sidebar"
+              title="Expand"
+            >
+              <img src={CogniLogo} alt="Cognisphere" style={{ width: 28, height: 28, borderRadius: 6 }} />
+            </button>
+          ) : (
+            // Expanded state: logo + name + collapse button
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <img src={CogniLogo} alt="Cognisphere" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: colors.textPrimary, whiteSpace: 'nowrap' }}>
+                  Cognisphere
+                </span>
+              </div>
+              <button
+                onClick={() => setCollapsed(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: colors.textMuted,
+                }}
+                aria-label="Collapse sidebar"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            </>
+          )}
         </div>
 
         {/* ── User Section ─ */}
-        <button
-          onClick={() => setShowAccount(true)}
-          style={{
-            flexShrink: 0,
-            padding: '12px',
-            borderBottom: `1px solid ${colors.border}`,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            justifyContent: collapsed ? 'center' : 'flex-start',
-          }}
-        >
-          <div
+        {!collapsed && (
+          <div style={{ flexShrink: 0, borderBottom: `1px solid ${colors.border}` }}>
+            {/* Profile header - clickable to toggle dropdown */}
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                justifyContent: 'space-between',
+                position: 'relative',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    backgroundColor: '#1C9EF9',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  {getInitials()}
+                </div>
+                <div style={{ minWidth: 0, textAlign: 'left' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {displayName}
+                  </div>
+                  <div style={{ fontSize: 10, color: colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {currentUser?.email}
+                  </div>
+                </div>
+              </div>
+              <div style={{ color: colors.textMuted, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                {profileDropdownOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
+            </button>
+
+            {/* Profile dropdown - expanded content */}
+            {profileDropdownOpen && (
+              <div
+                style={{
+                  padding: '12px',
+                  borderTop: `1px solid ${colors.border}`,
+                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                  borderRadius: '0 0 8px 8px',
+                }}
+              >
+                {/* Member since */}
+                <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
+                  Member since {userJoinedDate}
+                </div>
+
+                {/* Username edit section */}
+                {!isEditingUsername ? (
+                  <button
+                    onClick={handleEditUsername}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      background: 'none',
+                      border: `1px solid ${colors.border}`,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      borderRadius: 6,
+                      justifyContent: 'space-between',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = colors.hoverBg)}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <span style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 500 }}>
+                      @{displayName}
+                    </span>
+                    <Edit2 size={14} color={colors.textSecondary} />
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <input
+                      type="text"
+                      value={newUsername}
+                      onChange={(e) => {
+                        setNewUsername(e.target.value);
+                        if (editError) setEditError('');
+                      }}
+                      placeholder="Enter new name"
+                      disabled={isSavingUsername}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: `1px solid ${colors.border}`,
+                        background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                        color: colors.textPrimary,
+                        fontSize: 13,
+                        fontFamily: 'inherit',
+                        opacity: isSavingUsername ? 0.6 : 1,
+                      }}
+                      autoFocus
+                    />
+                    {editError && (
+                      <p style={{ fontSize: 11, color: '#FF453A', margin: 0 }}>
+                        {editError}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={handleSaveUsername}
+                        disabled={isSavingUsername}
+                        style={{
+                          flex: 1,
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          background: '#1C9EF9',
+                          color: '#ffffff',
+                          border: 'none',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          opacity: isSavingUsername ? 0.7 : 1,
+                        }}
+                      >
+                        {isSavingUsername ? '...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        disabled={isSavingUsername}
+                        style={{
+                          flex: 1,
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          background: colors.hoverBg,
+                          color: colors.textPrimary,
+                          border: 'none',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          opacity: isSavingUsername ? 0.5 : 1,
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {collapsed && (
+          <button
+            onClick={() => setShowAccount(true)}
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              backgroundColor: '#1C9EF9',
-              color: '#ffffff',
+              flexShrink: 0,
+              padding: '12px',
+              borderBottom: `1px solid ${colors.border}`,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 11,
-              fontWeight: 600,
-              flexShrink: 0,
             }}
           >
-            {getInitials()}
-          </div>
-          {!collapsed && (
-            <div style={{ minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {userProfile?.displayName || currentUser?.email?.split('@')[0] || 'User'}
-              </div>
-              <div style={{ fontSize: 10, color: colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {currentUser?.email}
-              </div>
-              <div style={{ fontSize: 9, color: colors.textMuted, marginTop: 2 }}>
-                Member since {userJoinedDate}
-              </div>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                backgroundColor: '#1C9EF9',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              {getInitials()}
             </div>
-          )}
-        </button>
+          </button>
+        )}
 
         {/* ── Nav Links ─ */}
         <nav style={{ flex: 1, overflow: 'hidden', padding: '8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -289,16 +509,15 @@ export default function Sidebar({
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = colors.hoverBg)}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
-                    <img
-                      src={`/icons/${icon}/Property 1=linear.png`}
-                      alt={label}
-                      style={{
-                        width: 14,
-                        height: 14,
-                        filter: isDark ? 'invert(1)' : 'none',
-                        opacity: visibleCards[key] ? 1 : 0.5,
-                      }}
-                    />
+                    <span style={{
+                      color: colors.textSecondary,
+                      opacity: visibleCards[key] ? 1 : 0.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {icon}
+                    </span>
                     <span>{label}</span>
                     {visibleCards[key] ? (
                       <Eye size={12} style={{ marginLeft: 'auto' }} />
@@ -365,7 +584,7 @@ export default function Sidebar({
               alignItems: 'center',
               justifyContent: collapsed ? 'center' : 'flex-start',
               gap: 8,
-              color: colors.textSecondary,
+              color: '#1C9EF9',
               fontSize: 12,
               borderRadius: 8,
               transition: 'background 200ms ease',
@@ -373,7 +592,7 @@ export default function Sidebar({
             onMouseEnter={e => (e.currentTarget.style.backgroundColor = colors.hoverBg)}
             onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            <MessageCircle size={16} />
+            <FeedbackIcon />
             {!collapsed && <span>Feedback</span>}
           </button>
 
@@ -390,19 +609,15 @@ export default function Sidebar({
               alignItems: 'center',
               justifyContent: collapsed ? 'center' : 'flex-start',
               gap: 8,
-              color: '#ef4444',
+              color: '#FF453A',
               fontSize: 12,
               borderRadius: 8,
               transition: 'background 200ms ease',
             }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)')}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,69,58,0.08)')}
             onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            <img
-              src="/icons/arrow-icon/Property 1=linear.png"
-              alt="Sign out"
-              style={{ width: 16, height: 16, filter: isDark ? 'invert(1)' : 'none' }}
-            />
+            <SignOutIcon />
             {!collapsed && <span>Sign out</span>}
           </button>
         </div>
@@ -412,6 +627,26 @@ export default function Sidebar({
       <AccountModal isOpen={showAccount} onClose={() => setShowAccount(false)} />
       <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
     </>
+  );
+}
+
+// ── Icons ──────────────────────────────────────────────────────────────────
+
+function SignOutIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  );
+}
+
+function FeedbackIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
+    </svg>
   );
 }
 

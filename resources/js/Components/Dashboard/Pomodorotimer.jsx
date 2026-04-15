@@ -328,7 +328,6 @@ export default function PomodoroTimer() {
         backdropFilter: 'blur(12px)',
         borderRadius: 20,
         padding: 20,
-        marginBottom: 12,
         border: colors.border,
       }}>
         {/* Auto-start toggle row */}

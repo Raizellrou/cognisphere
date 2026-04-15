@@ -14,7 +14,9 @@ import ChatPage     from '@/Pages/ChatPage';
 import CardsPage    from '@/Pages/CardsPage';
 import MusicPage       from '@/pages/MusicPage';
 import AccountPage  from '@/Pages/AccountPage';
-import MusicPage   from '@/Pages/MusicPage';
+import AboutPage    from '@/Pages/AboutPage';
+import PrivacyPage  from '@/Pages/PrivacyPage';
+import TermsPage    from '@/Pages/TermsPage';
 
 import '../css/app.css';   // Tailwind directives: @tailwind base/components/utilities
 
@@ -29,6 +31,9 @@ function App() {
           {/* Public routes — accessible without login */}
           <Route path="/login"    element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/about"    element={<AboutPage />} />
+          <Route path="/privacy"  element={<PrivacyPage />} />
+          <Route path="/terms"    element={<TermsPage />} />
 
           {/* Protected routes — redirect to /login if not authenticated */}
           <Route path="/" element={

@@ -32,7 +32,6 @@ export default function MusicWidget({ playlist = DEFAULT_PLAYLIST }) {
       backdropFilter: 'blur(12px)',
       borderRadius: 20,
       padding: 16,
-      marginBottom: 12,
       border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e5e7eb',
     }}>
       {/* Header */}
