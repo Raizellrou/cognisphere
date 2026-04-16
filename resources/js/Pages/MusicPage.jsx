@@ -243,8 +243,8 @@ export default function MusicPage() {
               return (
                 <div
                   key={track.id || track.trackId}
-                  className={i < trackList.length - 1
-                    ? 'border-b border-[#1e1e1e]' : ''}
+                  className={`w-full ${i < trackList.length - 1
+                    ? 'border-b border-[#1e1e1e]' : ''}`}
                 >
                   <TrackCard
                     track={normalizedTrack}

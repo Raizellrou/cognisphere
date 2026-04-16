@@ -22,7 +22,7 @@ import FeedbackModal from '@/Components/ui/FeedbackModal';
 import CogniLogo from '@/assets/CogniLogo.png';
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, ChevronDown, ChevronUp,
-  Timer, Home, CheckSquare, Calendar, Music2, Edit2,
+  Timer, Home, CheckSquare, Calendar, Music2, Edit2, Clock, Flame
 } from 'lucide-react';
 
 export default function Sidebar({
@@ -31,7 +31,7 @@ export default function Sidebar({
   isLastVisible: externalIsLastVisible,
 }) {
   const { isDark, toggleTheme } = useTheme();
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile, setUserProfile, logout } = useAuth();
   const navigate = useNavigate();
 
   // Local card visibility fallback if not provided
@@ -111,6 +111,7 @@ export default function Sidebar({
     try {
       const trimmedName = newUsername.trim();
       await updateDisplayName(currentUser, trimmedName);
+      setUserProfile(prev => ({ ...prev, displayName: trimmedName }));
       setIsEditingUsername(false);
       setNewUsername('');
     } catch (err) {
@@ -146,10 +147,10 @@ export default function Sidebar({
   const sidebarWidth = collapsed ? 80 : 240;
   const cardSubmenuItems = [
     { key: 'pomodoro', label: 'Pomodoro', icon: <Timer size={14} strokeWidth={1.8} /> },
-    { key: 'calendar', label: 'Calendar', icon: <Home size={14} strokeWidth={1.8} /> },
+    { key: 'calendar', label: 'Calendar', icon: <Calendar size={14} strokeWidth={1.8} /> },
     { key: 'music', label: 'Music', icon: <Music2 size={14} strokeWidth={1.8} /> },
-    { key: 'countdown', label: 'Countdown', icon: <Calendar size={14} strokeWidth={1.8} /> },
-    { key: 'streak', label: 'Streak', icon: <CheckSquare size={14} strokeWidth={1.8} /> },
+    { key: 'countdown', label: 'Countdown', icon: <Clock size={14} strokeWidth={1.8} /> },
+    { key: 'streak', label: 'Streak', icon: <Flame size={14} strokeWidth={1.8} /> },
   ];
 
   return (
@@ -427,7 +428,7 @@ export default function Sidebar({
         {/* ── Nav Links ─ */}
         <nav style={{ flex: 1, overflow: 'hidden', padding: '8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <NavItem
-            to="/"
+            to="/dashboard"
             icon="/icons/home-icon/Property 1=linear.png"
             label="Home"
             collapsed={collapsed}
@@ -437,7 +438,7 @@ export default function Sidebar({
           <NavItem
             to="/calendar"
             icon="/icons/calendar-icon/Property 1=linear.png"
-            label="Calendahr"
+            label="Calendar"
             collapsed={collapsed}
             isDark={isDark}
             colors={colors}

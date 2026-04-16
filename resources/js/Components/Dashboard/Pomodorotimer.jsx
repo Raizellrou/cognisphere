@@ -329,6 +329,7 @@ export default function PomodoroTimer() {
         borderRadius: 20,
         padding: 20,
         border: colors.border,
+        minHeight: '400px',
       }}>
         {/* Auto-start toggle row */}
         <AutoStartRow autoStart={autoStart} setAutoStart={setAutoStart} isDark={isDark} />

@@ -83,7 +83,7 @@ export default function Dashboard() {
   if (isDesktop) {
     return (
       <DesktopLayout sidebarProps={{ visibleCards, toggleCard, isLastVisible }}>
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="mx-auto px-6 py-4" style={{ maxWidth: '1280px' }}>
           {!emailVerified && (
             <VerificationBanner
               onResend={resendVerificationEmail}
@@ -91,10 +91,10 @@ export default function Dashboard() {
             />
           )}
 
-          {/* Cards layout — 3 columns with flexbox */}
+          {/* Cards layout — 3 columns with fixed widths */}
           <div className="flex gap-3 p-3 items-start">
             {/* Column 1: Pomodoro */}
-            <div className="flex flex-col gap-3 flex-1">
+            <div className="flex flex-col gap-3" style={{ width: '420px', flexShrink: 0 }}>
               {visibleCards.pomodoro && (
                 <div
                   key="pomodoro"
@@ -112,7 +112,7 @@ export default function Dashboard() {
             </div>
 
             {/* Column 2: Music + Calendar */}
-            <div className="flex flex-col gap-3 flex-1">
+            <div className="flex flex-col gap-3" style={{ width: '420px', flexShrink: 0 }}>
               {visibleCards.music && (
                 <div
                   key="music"
@@ -145,7 +145,7 @@ export default function Dashboard() {
             </div>
 
             {/* Column 3: Countdown + Streak */}
-            <div className="flex flex-col gap-3 flex-1">
+            <div className="flex flex-col gap-3" style={{ width: '380px', flexShrink: 0 }}>
               {visibleCards.countdown && (
                 <div
                   key="countdown"

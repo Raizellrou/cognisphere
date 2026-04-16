@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 
 // Pages
+import HomePage     from '@/Pages/HomePage';
 import LoginPage    from '@/Pages/LoginPage';
 import RegisterPage from '@/Pages/RegisterPage';
 import Dashboard    from '@/Pages/Dashboard';
@@ -29,6 +30,7 @@ function App() {
         <AuthProvider>
           <Routes>
           {/* Public routes — accessible without login */}
+          <Route path="/"         element={<HomePage />} />
           <Route path="/login"    element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/about"    element={<AboutPage />} />
@@ -36,7 +38,7 @@ function App() {
           <Route path="/terms"    element={<TermsPage />} />
 
           {/* Protected routes — redirect to /login if not authenticated */}
-          <Route path="/" element={
+          <Route path="/dashboard" element={
             <ProtectedRoute><Dashboard /></ProtectedRoute>
           } />
           <Route path="/calendar" element={

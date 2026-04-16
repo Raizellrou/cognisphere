@@ -14,7 +14,7 @@ export default function TrackCard({ track, isPlaying, onClick }) {
     <button
       onClick={() => onClick(track)}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                  transition-all duration-150 text-left group
+                  transition-all duration-150 text-left group overflow-hidden
                   ${isPlaying
                     ? 'bg-white/10 border border-white/20'
                     : 'hover:bg-[#1a1a1a] border border-transparent'}`}
@@ -46,7 +46,7 @@ export default function TrackCard({ track, isPlaying, onClick }) {
       </div>
 
       {/* Track info */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-hidden">
         <p className={`text-sm font-medium truncate
                        ${isPlaying ? 'text-white' : 'text-gray-200'}`}>
           {track.title}

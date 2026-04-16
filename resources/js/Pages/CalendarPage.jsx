@@ -1,8 +1,8 @@
 /**
- * CalendarPage.jsx — Redesigned with desktop layout support
- * Full monthly calendar. Glassmorphism cards, blue accent for today,
- * task list with green/blue states. Add task via SlideUpModal.
- * Desktop: Two-column layout with calendar + Focus Tasks panel
+ * CalendarPage.jsx — Full page calendar with mobile tasks
+ * Desktop: Full monthly calendar only
+ * Mobile: Calendar + tasks section with add task button
+ * Task modal for creating/editing events
  */
 
 import { useState, useMemo, useEffect } from 'react';
@@ -14,7 +14,7 @@ import EventModal             from '@/components/calendar/EventModal';
 import DesktopLayout          from '@/Layouts/DesktopLayout';
 import BottomNav              from '@/components/layout/BottomNav';
 import SlideUpModal           from '@/components/ui/SlideUpModal';
-import { Plus, Trash2, Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Plus, Trash2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const DAY_LABELS  = ['S','M','T','W','T','F','S'];
 const MONTH_NAMES = ['January','February','March','April','May','June',
@@ -137,6 +137,7 @@ export default function CalendarPage() {
 
   // ── Desktop layout ───────────────────────────────────────────────────────
   if (isDesktop) {
+    const selectedEvents = eventsByDate[selected] || [];
     return (
       <DesktopLayout>
         <div className="flex flex-1 overflow-hidden bg-[#f8fafc] dark:bg-[#0a0a0a]">
@@ -161,176 +162,123 @@ export default function CalendarPage() {
             />
           </div>
 
-          {/* Right: Focus Tasks panel (300px fixed) */}
-          {showTaskPanel && (
+          {/* Right: Add Task Panel */}
+          <div
+            style={{
+              width: 300,
+              borderLeft: `1px solid ${colors.border}`,
+              backgroundColor: colors.pageBg,
+              display: 'flex',
+              flexDirection: 'column',
+              flexShrink: 0,
+            }}
+          >
+            {/* Header */}
             <div
               style={{
-                width: 300,
-                borderLeft: `1px solid ${colors.border}`,
-                backgroundColor: colors.pageBg,
-                display: 'flex',
-                flexDirection: 'column',
                 flexShrink: 0,
+                padding: '16px',
+                borderBottom: `1px solid ${colors.border}`,
               }}
             >
-              {/* Header */}
-              <div
-                style={{
-                  flexShrink: 0,
-                  padding: '16px',
-                  borderBottom: `1px solid ${colors.border}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <p style={{ fontSize: 13, fontWeight: 700, color: colors.textPrimary }}>
-                  🗒️ Focus Tasks
-                </p>
-                <button
-                  onClick={() => setShowTaskPanel(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: colors.textMuted,
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Filter chips */}
-              <div style={{ flexShrink: 0, padding: '12px 16px', display: 'flex', gap: 8, overflow: 'x-auto' }}>
-                <button
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 12,
-                    border: `1px solid ${colors.border}`,
-                    backgroundColor: 'transparent',
-                    color: colors.textMuted,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  All Tasks
-                </button>
-                <button
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 12,
-                    border: `1px solid ${colors.border}`,
-                    backgroundColor: 'transparent',
-                    color: colors.textMuted,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  All Tags
-                </button>
-              </div>
-
-              {/* + Add Task button */}
-              <button
-                onClick={() => handleAddEvent(parseInt(selected.split('-')[2]))}
-                style={{
-                  margin: '0 12px',
-                  marginTop: 8,
-                  padding: '10px 12px',
-                  width: 'calc(100% - 24px)',
-                  backgroundColor: '#1C9EF9',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                <Plus size={14} />
-                Add Task
-              </button>
-
-              {/* Task list */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-                {tasks && tasks.length > 0 ? (
-                  tasks.map(task => (
-                    <div
-                      key={task.id}
-                      style={{
-                        padding: '10px 12px',
-                        marginBottom: 8,
-                        borderRadius: 6,
-                        backgroundColor: task.done ? 'rgba(34,197,94,0.12)' : 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={task.done}
-                        onChange={() => toggleTask(task.id, !task.done)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <span
-                        style={{
-                          flex: 1,
-                          fontSize: 12,
-                          color: task.done ? colors.textMuted : colors.textPrimary,
-                          textDecoration: task.done ? 'line-through' : 'none',
-                        }}
-                      >
-                        {task.title}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          color: colors.textMuted,
-                        }}
-                      >
-                        {task.done ? '1/1' : '0/1'}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 24 }}>
-                    No tasks yet
-                  </p>
-                )}
-              </div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: colors.textPrimary }}>
+                📝 Add Task
+              </p>
             </div>
-          )}
 
-          {/* Toggle button when panel is closed */}
-          {!showTaskPanel && (
+            {/* + Add Task button */}
             <button
-              onClick={() => setShowTaskPanel(true)}
+              onClick={() => handleAddEvent(parseInt(selected.split('-')[2]))}
               style={{
-                width: 48,
-                borderLeft: `1px solid ${colors.border}`,
-                backgroundColor: colors.pageBg,
+                margin: '12px',
+                padding: '10px 12px',
+                width: 'calc(100% - 24px)',
+                backgroundColor: '#1C9EF9',
+                color: '#ffffff',
                 border: 'none',
+                borderRadius: 8,
                 cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: colors.textMuted,
+                gap: 6,
               }}
-              title="Show Focus Tasks"
             >
-              📋
+              <Plus size={14} />
+              Add Task
             </button>
-          )}
+
+            {/* Today's tasks */}
+            <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: `1px solid ${colors.border}` }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted }}>
+                TODAY'S TASKS
+              </p>
+            </div>
+
+            {/* Task list */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+              {selectedEvents.length > 0 ? (
+                selectedEvents.map(ev => (
+                  <div
+                    key={ev.id}
+                    style={{
+                      padding: '10px 12px',
+                      marginBottom: 8,
+                      borderRadius: 6,
+                      backgroundColor: ev.done ? 'rgba(34,197,94,0.12)' : 'rgba(28,158,249,0.08)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 8,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={ev.done}
+                      onChange={() => toggleEvent(ev.id, !ev.done)}
+                      style={{ cursor: 'pointer', marginTop: 2 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{
+                        fontSize: 12,
+                        color: ev.done ? colors.textMuted : colors.textPrimary,
+                        textDecoration: ev.done ? 'line-through' : 'none',
+                        margin: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {ev.title}
+                      </p>
+                      {ev.description && (
+                        <p style={{
+                          fontSize: 11,
+                          color: colors.textMuted,
+                          margin: '2px 0 0 0',
+                          overflow: 'hidden',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                        }}>
+                          {ev.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 24 }}>
+                  No tasks today
+                </p>
+              )}
+            </div>
+          </div>
         </div>
+
+        {showModal && (
+          <EventModal date={modalDate} onSave={addEvent} onClose={() => setShowModal(false)} />
+        )}
       </DesktopLayout>
     );
   }

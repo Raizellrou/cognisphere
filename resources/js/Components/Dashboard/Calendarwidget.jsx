@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/context/ThemeContext';
 import { ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
 
@@ -21,6 +22,8 @@ function toDateStr(y, m, d) {
 }
 
 export default function CalendarWidget() {
+  const navigate = useNavigate();
+  const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
   const today = new Date();
   const [viewYear, setViewYear]   = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -93,7 +96,7 @@ export default function CalendarWidget() {
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => setExpanded(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1C9EF9', padding: 2 }}>
+            <button onClick={() => isDesktop ? navigate('/calendar') : setExpanded(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1C9EF9', padding: 2 }}>
               <Maximize2 width={16} height={16} strokeWidth={2} stroke="currentColor" />
             </button>
             <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1C9EF9', padding: 2 }}>
