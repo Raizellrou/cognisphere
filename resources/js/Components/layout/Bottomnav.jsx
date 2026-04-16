@@ -16,7 +16,7 @@ import AccountModal      from '@/Pages/AccountPage';
 import CardsManagerModal from '@/components/ui/CardsManagerModal';
 
 const PAGE_NAV = [
-  { to: '/',         label: 'Home',     Icon: ({ active }) => <Home width={22} height={22} strokeWidth={active ? 2.2 : 1.8} /> },
+  { to: '/dashboard', label: 'Home',     Icon: ({ active }) => <Home width={22} height={22} strokeWidth={active ? 2.2 : 1.8} /> },
   { to: '/calendar', label: 'Calendar', Icon: ({ active }) => <Calendar width={22} height={22} strokeWidth={active ? 2.2 : 1.8} /> },
   { to: '/chat',     label: 'Chat',     Icon: ({ active }) => <MessageSquare width={22} height={22} strokeWidth={active ? 2.2 : 1.8} /> },
 ];
@@ -67,7 +67,7 @@ export default function BottomNav({ visibleCards, toggleCard, isLastVisible }) {
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
+              end={to === '/dashboard'}
               style={{ textDecoration: 'none', flex: 1 }}
             >
               {({ isActive }) => (
