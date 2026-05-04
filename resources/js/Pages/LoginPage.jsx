@@ -54,10 +54,6 @@ export default function LoginPage() {
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotSent, setForgotSent] = useState(false);
-  const [forgotLoading, setForgotLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   // ── Redirect already-logged-in users ──────────────────────────────────────
   // WHY here and not just in ProtectedRoute:

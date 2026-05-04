@@ -48,7 +48,8 @@ export function useMusic(uid) {
         snap.docs.map(d => ({ id: d.id, ...d.data() }))
       );
       setLoading(l => ({ ...l, recent: false }));
-    }, () => {
+    }, (err) => {
+      setError('Failed to load recently played tracks.');
       setLoading(l => ({ ...l, recent: false }));
     });
 

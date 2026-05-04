@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback, useEffect, createContext, useContext } from 'react';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 
 // ── Context ──────────────────────────────────────────────────────────────────
 
@@ -52,9 +53,37 @@ export function useNotification() {
 // ── Container ────────────────────────────────────────────────────────────────
 
 function NotificationContainer({ toasts }) {
+  const isDesktop = useIsDesktop();
+
   if (!toasts.length) return null;
+
+  const containerStyle = isDesktop
+    ? {
+        position: 'fixed',
+        top: '16px',
+        left: 'calc(240px + (100vw - 240px) / 2)',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        pointerEvents: 'none',
+        alignItems: 'center',
+      }
+    : {
+        position: 'fixed',
+        top: '16px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        pointerEvents: 'none',
+      };
+
   return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+    <div style={containerStyle}>
       {toasts.map(t => <Toast key={t.id} {...t} />)}
     </div>
   );

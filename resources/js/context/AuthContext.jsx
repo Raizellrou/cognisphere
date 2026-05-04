@@ -1,21 +1,4 @@
-/**
- * AuthContext.jsx
- * ─────────────────────────────────────────────────────────────────────────────
- * ARCHITECTURE ROLE:
- *   Single source of truth for auth state across the entire app.
- *   Components never import Firebase Auth directly — they consume this context.
- *
- * WHAT'S IMPROVED vs your original:
- *   ✓ Exposes emailVerified status for verification banner
- *   ✓ Exposes isNewUser flag to differentiate first login vs returning
- *   ✓ Provides refreshUser() so verification state can be polled
- *   ✓ Token refresh is handled automatically by Firebase SDK — we expose
- *     getIdToken() for Laravel API calls
- *   ✓ Error boundary at context level — auth failures don't crash the app
- *   ✓ logout navigates to /login (avoids stale component state)
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
+import CogniLogo from '@/assets/CogniLogo.png';
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -125,19 +108,35 @@ export function AuthProvider({ children }) {
    * and redirects to /login before Firebase has had a chance to rehydrate the
    * session. The spinner prevents that flash.
    */
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-white/30 border-t-white
-                          rounded-full animate-spin" />
-          <p className="text-gray-600 text-xs tracking-widest uppercase">
-            Loading
-          </p>
-        </div>
-      </div>
-    );
-  }
+ // WITH THIS:
+if (loading) {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: '#000000',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+    }}>
+      <img
+        src={CogniLogo}
+        alt="CogniSphere"
+        style={{ width: 80, height: 80, objectFit: 'contain' }}
+      />
+      <p style={{
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 13,
+        fontWeight: 600,
+        letterSpacing: '0.08em',
+        textTransform: 'none',
+      }}>
+        Thinking...
+      </p>
+    </div>
+  );
+}
 
   return (
     <AuthContext.Provider value={value}>

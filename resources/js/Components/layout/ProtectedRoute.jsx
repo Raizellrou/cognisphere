@@ -1,23 +1,8 @@
-/**
- * ProtectedRoute.jsx
- * ─────────────────────────────────────────────────────────────────────────────
- * WHAT'S IMPROVED vs your original:
- *  ✓ Handles loading state — no flash-to-login during Firebase rehydration
- *  ✓ Preserves the intended destination (redirects back after login)
- *  ✓ Optional email verification gate (requireVerified prop)
- *  ✓ Shows verification banner if user is logged in but unverified
- *
- * HOW "redirect back after login" WORKS:
- *  When a user hits /calendar without being logged in, we save "/calendar"
- *  in the location state. LoginPage reads this after successful auth and
- *  navigates there instead of always going to "/".
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { VerificationBanner } from '@/context/auth/AuthUI';
 import { resendVerificationEmail } from '@/services/firebaseAuthService';
+import CogniLogo from '@/assets/CogniLogo.png';
 
 export default function ProtectedRoute({
   children,
@@ -30,14 +15,34 @@ export default function ProtectedRoute({
   // WHY: Firebase rehydrates from IndexedDB asynchronously on page load.
   // Without this, currentUser is null for ~100ms and we'd redirect to /login
   // even for legitimately logged-in users.
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-white/20 border-t-white/80
-                        rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // WITH THIS:
+if (loading) {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: '#000000',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+    }}>
+      <img
+        src={CogniLogo}
+        alt="CogniSphere"
+        style={{ width: 80, height: 80, objectFit: 'contain' }}
+      />
+      <p style={{
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: 14,
+        fontWeight: 600,
+        letterSpacing: '0.05em',
+      }}>
+        Thinking...
+      </p>
+    </div>
+  );
+}
 
   // ── Not logged in → redirect to /login ───────────────────────────────────
   if (!currentUser) {
@@ -88,14 +93,33 @@ export default function ProtectedRoute({
 export function GuestRoute({ children }) {
   const { currentUser, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-white/20 border-t-white/80
-                        rounded-full animate-spin" />
-      </div>
-    );
-  }
+if (loading) {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: '#000000',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+    }}>
+      <img
+        src={CogniLogo}
+        alt="CogniSphere"
+        style={{ width: 80, height: 80, objectFit: 'contain' }}
+      />
+      <p style={{
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: 14,
+        fontWeight: 600,
+        letterSpacing: '0.05em',
+      }}>
+        Thinking...
+      </p>
+    </div>
+  );
+}
 
   // Already logged in → send to dashboard
   if (currentUser) {

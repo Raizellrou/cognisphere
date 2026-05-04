@@ -14,27 +14,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth }    from '@/context/AuthContext';
 import { useChat }    from '@/hooks/useChat';
 import { useTheme }   from '@/context/ThemeContext';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 import DesktopLayout  from '@/Layouts/DesktopLayout';
 import BottomNav      from '@/components/layout/BottomNav';
 import SlideUpModal   from '@/components/ui/SlideUpModal';
 import CogniLogo      from '@/assets/CogniLogo.png';
-
-// ── Desktop breakpoint hook ─────────────────────────────────────────────────
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth >= 1024;
-  });
-
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const handler = (e) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-
-  return isDesktop;
-}
 
 export default function ChatPage() {
   const { currentUser } = useAuth();
@@ -726,6 +710,7 @@ function ChatListItem({ chat, isActive, onSelect, onDelete }) {
 function MessageBubble({ message }) {
   const isUser = message.role === 'user';
   const isError = message.isError;
+  const { isDark } = useTheme();
 
   const timeStr = message.timestamp instanceof Date
     ? message.timestamp.toLocaleTimeString('en-US', {
@@ -736,23 +721,28 @@ function MessageBubble({ message }) {
   return (
     <div className={`flex items-end gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       {!isUser && (
-        <div className="w-7 h-7 bg-white rounded-full flex items-center
-                        justify-center flex-shrink-0 mb-0.5">
-          <span className="text-black font-black text-xs">C</span>
+        <div className={`w-7 h-7 rounded-full flex items-center
+                        justify-center flex-shrink-0 mb-0.5
+                        ${isDark ? 'bg-white' : 'bg-gray-300'}`}>
+          <span className={`font-black text-xs ${isDark ? 'text-black' : 'text-gray-700'}`}>C</span>
         </div>
       )}
       <div className={`flex flex-col max-w-[82%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap
           ${isUser
-            ? 'bg-white text-black rounded-br-md'
+            ? isDark
+              ? 'bg-white text-black rounded-br-md'
+              : 'bg-blue-500 text-white rounded-br-md'
             : isError
             ? 'bg-red-950/40 border border-red-900/40 text-red-300 rounded-bl-md'
-            : 'bg-[#1a1a1a] border border-[#252525] text-gray-200 rounded-bl-md'
+            : isDark
+            ? 'bg-[#1a1a1a] border border-[#252525] text-gray-200 rounded-bl-md'
+            : 'bg-gray-100 border border-gray-300 text-black rounded-bl-md'
           }`}
         >
           {message.content}
         </div>
-        <p className="text-gray-700 text-[10px] mt-1 px-1">{timeStr}</p>
+        <p className={`text-[10px] mt-1 px-1 ${isDark ? 'text-gray-700' : 'text-gray-500'}`}>{timeStr}</p>
       </div>
     </div>
   );

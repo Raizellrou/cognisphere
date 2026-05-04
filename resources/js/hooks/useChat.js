@@ -126,6 +126,7 @@ export function useChat(uid) {
   // ── Create a new chat in Firestore directly ───────────────────────────────
   const newChat = useCallback(async () => {
     if (!uid) return;
+    setError(null);
     try {
       const chatRef = await addDoc(collection(db, 'users', uid, 'chats'), {
         title:     'New Chat',
@@ -154,6 +155,7 @@ export function useChat(uid) {
   // ── Delete a chat and all its messages ───────────────────────────────────
   const deleteChat = useCallback(async (chatId) => {
     if (!uid) return;
+    setError(null);
     try {
       // Delete all messages in a batch
       const msgSnap = await getDocs(
@@ -183,6 +185,7 @@ export function useChat(uid) {
   // ── Send a message ────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text) => {
     if (!text.trim() || loading.sending) return;
+    setError(null);
 
     let chatId = activeChatId;
 

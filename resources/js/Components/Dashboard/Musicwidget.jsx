@@ -1,25 +1,35 @@
 import { useState, useRef } from 'react';
 import { useTheme } from '@/context/ThemeContext';
-import { Music2 } from 'lucide-react';
+import { useMusicContext } from '@/context/MusicContext';
+import { Music2, Play } from 'lucide-react';
 
 const API_KEY = 'AIzaSyCD3dUfAtD-HzrJPIBFSl_qkmsZ0tEct60';
 
 export default function MusicWidget() {
   const { isDark } = useTheme();
-  const [query, setQuery]               = useState('');
-  const [results, setResults]           = useState([]);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState('');
-  const [currentTrack, setCurrentTrack] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPaused, setIsPaused]         = useState(false);
-  const iframeRef = useRef(null);
+  const {
+    currentTrack,
+    results,
+    isPlaying,
+    currentIndex,
+    loading,
+    error,
+    search: contextSearch,
+    playTrack: contextPlayTrack,
+    togglePlayPause: contextTogglePlayPause,
+    playNext: contextPlayNext,
+  } = useMusicContext();
+
+  const [query, setQuery] = useState('');
+  const [showResults, setShowResults] = useState(false);
 
   const primaryText  = isDark ? '#ffffff' : '#111827';
   const secondaryText = isDark ? 'rgba(255,255,255,0.45)' : '#6b7280';
   const inputBg      = isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6';
   const inputBorder  = isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e5e7eb';
   const controlBg    = isDark ? 'rgba(255,255,255,0.08)' : '#f3f4f6';
+  const resultBg     = isDark ? 'rgba(255,255,255,0.04)' : '#fafafa';
+  const resultHoverBg = isDark ? 'rgba(255,255,255,0.08)' : '#f3f4f6';
 
   // FIX: use youtube.com (not nocookie), controls=1 required for
   // autoplay policy, no origin= param to avoid localhost mismatch
@@ -28,85 +38,8 @@ export default function MusicWidget() {
 
   const search = async () => {
     if (!query.trim()) return;
-    setLoading(true);
-    setError('');
-    setResults([]);
-    try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}+music&type=video&maxResults=10&key=${API_KEY}`;
-      const res  = await fetch(url);
-      const data = await res.json();
-      if (data.error) { setError(data.error.message); return; }
-      const mapped = data.items.map((item) => ({
-        id:        item.id.videoId,
-        title:     item.snippet.title,
-        channel:   item.snippet.channelTitle,
-        thumbnail: item.snippet.thumbnails.default.url,
-      }));
-      setResults(mapped);
-      findAndPlay(mapped, 0);
-    } catch (e) {
-      setError('Search failed. Check your connection.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const playTrack = (track, index) => {
-    setCurrentTrack(track);
-    setCurrentIndex(index);
-    setIsPaused(false);
-    if (iframeRef.current) {
-      iframeRef.current.src = getEmbedSrc(track.id, true);
-      setTimeout(() => {
-        try {
-          const doc = iframeRef.current?.contentDocument;
-          if (doc && doc.title && doc.title.toLowerCase().includes('not available')) {
-            const next = (index + 1) % results.length;
-            if (next !== index) playTrack(results[next], next);
-          }
-        } catch (e) {
-          // cross-origin block means video IS loading fine
-        }
-      }, 4000);
-    }
-  };
-
-  const handlePlayPause = () => {
-    if (!currentTrack || !iframeRef.current) return;
-    if (isPaused) {
-      iframeRef.current.src = getEmbedSrc(currentTrack.id, true);
-      setIsPaused(false);
-    } else {
-      iframeRef.current.src = '';
-      setIsPaused(true);
-    }
-  };
-
-  const findAndPlay = async (trackList, startIndex) => {
-    for (let i = startIndex; i < trackList.length; i++) {
-      const track = trackList[i];
-      setCurrentTrack(track);
-      setCurrentIndex(i);
-      setIsPaused(false);
-      if (iframeRef.current) {
-        iframeRef.current.src = getEmbedSrc(track.id, true);
-      }
-      await new Promise(res => setTimeout(res, 3500));
-      try {
-        const doc = iframeRef.current?.contentDocument;
-        if (!doc || !doc.title || !doc.title.toLowerCase().includes('not available')) {
-          return;
-        }
-      } catch (e) {
-        return;
-      }
-    }
-  };
-
-  const handleNext = () => {
-    if (!results.length) return;
-    const next = (currentIndex + 1) % results.length;
-    findAndPlay(results, next);
+    setShowResults(true);
+    await contextSearch(query);
   };
 
   return (
@@ -187,23 +120,128 @@ export default function MusicWidget() {
       {/* ── Error ── */}
       {error && <div style={{ color: '#ef4444', fontSize: 12 }}>{error}</div>}
 
+      {/* ── Results List Section (shown when searching) ── */}
+      {showResults && (
+        <div
+          style={{
+            maxHeight: '240px',
+            overflowY: 'auto',
+            borderRadius: 10,
+            background: resultBg,
+            border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e5e7eb',
+          }}
+        >
+          {results.length === 0 && !loading ? (
+            <div style={{
+              padding: '16px',
+              textAlign: 'center',
+              color: secondaryText,
+              fontSize: 12,
+            }}>
+              No results found
+            </div>
+          ) : (
+            <div>
+              {results.map((track, idx) => (
+                <div
+                  key={track.id}
+                  onClick={() => contextPlayTrack(track, idx)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 12px',
+                    borderBottom: idx < results.length - 1 ? `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#e5e7eb'}` : 'none',
+                    cursor: 'pointer',
+                    transition: 'background 150ms ease',
+                    background: currentTrack?.id === track.id ? isDark ? 'rgba(28,158,249,0.12)' : '#eff8ff' : 'transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentTrack?.id !== track.id) {
+                      e.currentTarget.style.background = resultHoverBg;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentTrack?.id !== track.id) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
+                  {/* Thumbnail */}
+                  <img
+                    src={track.thumbnail}
+                    alt={track.title}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 6,
+                      objectFit: 'cover',
+                      flexShrink: 0,
+                    }}
+                  />
+
+                  {/* Title & Artist */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: primaryText,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {track.title}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: secondaryText,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {track.channel}
+                    </div>
+                  </div>
+
+                  {/* Play Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      contextPlayTrack(track, idx);
+                    }}
+                    style={{
+                      background: '#1C9EF9',
+                      border: 'none',
+                      borderRadius: 6,
+                      width: 32,
+                      height: 32,
+                      cursor: 'pointer',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      transition: 'opacity 150ms ease',
+                      opacity: 0.9,
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.9'}
+                  >
+                    <Play size={14} fill="#fff" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── YouTube embed — visible 16:9 when track is active ── */}
-      <iframe
-        ref={iframeRef}
-        src=""
-        style={{
-          display:      currentTrack ? 'block' : 'none',
-          width:        '100%',
-          aspectRatio:  '16/9',
-          borderRadius: 10,
-          border:       'none',
-        }}
-        allow="autoplay; encrypted-media"
-        allowFullScreen
-        title="music-player"
-        onError={handleNext}
-        onEnded={handleNext}
-      />
+      {/* Note: iframe is now rendered at the MusicContext provider level with display: none */}
 
       {/* ── Now-playing bar (thumbnail + title + controls) ── */}
       {currentTrack && (
@@ -249,7 +287,7 @@ export default function MusicWidget() {
             </div>
           </div>
           <button
-            onClick={handlePlayPause}
+            onClick={contextTogglePlayPause}
             style={{
               background:     controlBg,
               border:         'none',
@@ -264,10 +302,10 @@ export default function MusicWidget() {
               justifyContent: 'center',
             }}
           >
-            {isPaused ? '▶' : '⏸'}
+            {isPlaying ? '⏸' : '▶'}
           </button>
           <button
-            onClick={handleNext}
+            onClick={contextPlayNext}
             style={{
               background:     controlBg,
               border:         'none',
@@ -286,8 +324,6 @@ export default function MusicWidget() {
           </button>
         </div>
       )}
-
-      {/* ── Scrollable results list REMOVED intentionally ── */}
 
     </div>
   );

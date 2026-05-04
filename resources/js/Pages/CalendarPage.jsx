@@ -10,13 +10,14 @@ import { useAuth }            from '@/context/AuthContext';
 import { useTheme }           from '@/context/ThemeContext';
 import { useCalendarEvents }  from '@/hooks/useCalendarEvents';
 import { useTasks }           from '@/hooks/useTasks';
+import { useIsDesktop }       from '@/hooks/useIsDesktop';
 import EventModal             from '@/components/calendar/EventModal';
 import DesktopLayout          from '@/Layouts/DesktopLayout';
 import BottomNav              from '@/components/layout/BottomNav';
 import SlideUpModal           from '@/components/ui/SlideUpModal';
 import { Plus, Trash2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const DAY_LABELS  = ['S','M','T','W','T','F','S'];
+const DAY_LABELS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 const MONTH_SHORT = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
@@ -26,23 +27,6 @@ function toDateStr(date) {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
   return `${y}-${mm}-${dd}`;
-}
-
-// ── Desktop breakpoint hook ─────────────────────────────────────────────────
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth >= 1024;
-  });
-
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const handler = (e) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-
-  return isDesktop;
 }
 
 export default function CalendarPage() {
@@ -334,7 +318,7 @@ export default function CalendarPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 12 }}>
             {DAY_LABELS.map(label => (
               <div key={label} style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: colors.label }}>
-                {label}
+                {label[0]}
               </div>
             ))}
           </div>
@@ -348,7 +332,8 @@ export default function CalendarPage() {
               const dateStr = makeDateStr(day);
               return (
                 <div
-                  key={day}
+                  
+                
                   onClick={() => handleDayClick(day)}
                   style={{
                     aspectRatio: '1',
@@ -428,7 +413,7 @@ export default function CalendarPage() {
           ) : (
             <div>
               {selectedEvents.map(ev => (
-                <EventRow key={ev.id} event={ev} onDelete={() => deleteEvent(ev.id)} onToggle={() => toggleEvent(ev.id, !!ev.done)} />
+                <EventRow key={ev.id} event={ev} onDelete={() => deleteEvent(ev.id)} onToggle={() => toggleEvent(ev.id, !ev.done)} />
               ))}
             </div>
           )}
@@ -537,7 +522,7 @@ function CalendarComponent({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginBottom: 12 }}>
         {DAY_LABELS.map(label => (
           <div key={label} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: colors.label, marginBottom: 8 }}>
-            {label}
+            {label[0]}
           </div>
         ))}
       </div>
@@ -551,7 +536,7 @@ function CalendarComponent({
           const dateStr = makeDateStr(day);
           return (
             <button
-              key={day}
+              key={`${viewYear}-${viewMonth}-${day}-${i}`}
               onClick={() => handleDayClick(day)}
               style={{
                 aspectRatio: '1',

@@ -11,9 +11,11 @@ import { useAuth }           from '@/context/AuthContext';
 import { useStreak }         from '@/hooks/useStreak';
 import { useTasks }          from '@/hooks/useTasks';
 import { useCountdowns }     from '@/hooks/useCountdowns';
+import { useIsDesktop }      from '@/hooks/useIsDesktop';
 import { resendVerificationEmail } from '@/services/firebaseAuthService';
 import { VerificationBanner }      from '@/context/auth/AuthUI';
 import { useCardVisibility }       from '@/hooks/useCardVisibility';
+import { useCardOrder }            from '@/hooks/useCardOrder';
 import { useEffect, useState } from 'react';
 
 import DesktopLayout   from '@/Layouts/DesktopLayout';
@@ -25,23 +27,6 @@ import MusicWidget     from '@/components/Dashboard/Musicwidget';
 import BottomNav       from '@/components/layout/BottomNav';
 import Footer          from '@/components/layout/Footer';
 
-// ── Desktop breakpoint hook ─ detect lg (1024px+) ────────────────────────
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth >= 1024;
-  });
-
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const handler = (e) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-
-  return isDesktop;
-}
-
 export default function Dashboard() {
   const {
     currentUser,
@@ -52,13 +37,23 @@ export default function Dashboard() {
 
   const uid = currentUser?.uid;
 
-  const { streak }                                    = useStreak(uid);
+  const { streak, completedToday, recordPomodoroSession } = useStreak(uid);
   const { tasks, addTask, toggleTask } = useTasks(uid); 
   const { countdowns, addCountdown, deleteCountdown } = useCountdowns(uid);
   const { visibleCards, toggleCard, isLastVisible }   = useCardVisibility();
+  const { cardOrder, reorderCards } = useCardOrder();
 
   const [draggedCard, setDraggedCard] = useState(null);
   const isDesktop = useIsDesktop();
+
+  // Guard: check uid is loaded
+  if (!uid) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-gray-500 text-sm">Loading user data…</p>
+      </div>
+    );
+  }
 
   // Guard: visibleCards should always be defined from the hook,
   // but this ensures we never render with a broken state
@@ -68,11 +63,23 @@ export default function Dashboard() {
   const handleDragStart = (e, cardKey) => {
     setDraggedCard(cardKey);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', cardKey);
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetCardKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (draggedCard && draggedCard !== targetCardKey) {
+      reorderCards(draggedCard, targetCardKey);
+    }
+    
+    setDraggedCard(null);
   };
 
   const handleDragEnd = () => {
@@ -81,6 +88,32 @@ export default function Dashboard() {
 
   // ── Render desktop layout ────────────────────────────────────────────────
   if (isDesktop) {
+    // Map card keys to their components
+    const cardComponents = {
+      pomodoro: visibleCards.pomodoro && (
+        <PomodoroTimer onSessionComplete={recordPomodoroSession} />
+      ),
+      music: visibleCards.music && (
+        <MusicWidget />
+      ),
+      calendar: visibleCards.calendar && (
+        <CalendarWidget />
+      ),
+      countdown: visibleCards.countdown && (
+        <CountdownWidget
+          countdowns={countdowns ?? []}
+          onAdd={addCountdown}
+          onDelete={deleteCountdown}
+        />
+      ),
+      streak: visibleCards.streak && (
+        <StreakWidget streak={streak} completedToday={completedToday} />
+      ),
+    };
+
+    // Filter cards to only visible ones and sort by cardOrder
+    const visibleCardKeys = cardOrder.filter(key => visibleCards[key]);
+
     return (
       <DesktopLayout sidebarProps={{ visibleCards, toggleCard, isLastVisible }}>
         <div className="mx-auto px-6 py-4" style={{ maxWidth: '1280px' }}>
@@ -91,95 +124,39 @@ export default function Dashboard() {
             />
           )}
 
-          {/* Cards layout — 3 columns with fixed widths */}
-          <div className="flex gap-3 p-3 items-start">
-            {/* Column 1: Pomodoro */}
-            <div className="flex flex-col gap-3" style={{ width: '420px', flexShrink: 0 }}>
-              {visibleCards.pomodoro && (
-                <div
-                  key="pomodoro"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, 'pomodoro')}
-                  onDragOver={handleDragOver}
-                  onDragEnd={handleDragEnd}
-                  className={`cursor-move transition-opacity ${
-                    draggedCard === 'pomodoro' ? 'opacity-50' : 'opacity-100'
-                  }`}
-                >
-                  <PomodoroTimer />
-                </div>
-              )}
-            </div>
-
-            {/* Column 2: Music + Calendar */}
-            <div className="flex flex-col gap-3" style={{ width: '420px', flexShrink: 0 }}>
-              {visibleCards.music && (
-                <div
-                  key="music"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, 'music')}
-                  onDragOver={handleDragOver}
-                  onDragEnd={handleDragEnd}
-                  className={`cursor-move transition-opacity ${
-                    draggedCard === 'music' ? 'opacity-50' : 'opacity-100'
-                  }`}
-                >
-                  <MusicWidget />
-                </div>
-              )}
-
-              {visibleCards.calendar && (
-                <div
-                  key="calendar"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, 'calendar')}
-                  onDragOver={handleDragOver}
-                  onDragEnd={handleDragEnd}
-                  className={`cursor-move transition-opacity ${
-                    draggedCard === 'calendar' ? 'opacity-50' : 'opacity-100'
-                  }`}
-                >
-                  <CalendarWidget />
-                </div>
-              )}
-            </div>
-
-            {/* Column 3: Countdown + Streak */}
-            <div className="flex flex-col gap-3" style={{ width: '380px', flexShrink: 0 }}>
-              {visibleCards.countdown && (
-                <div
-                  key="countdown"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, 'countdown')}
-                  onDragOver={handleDragOver}
-                  onDragEnd={handleDragEnd}
-                  className={`cursor-move transition-opacity ${
-                    draggedCard === 'countdown' ? 'opacity-50' : 'opacity-100'
-                  }`}
-                >
-                  <CountdownWidget
-                    countdowns={countdowns ?? []}
-                    onAdd={addCountdown}
-                    onDelete={deleteCountdown}
-                  />
-                </div>
-              )}
-
-              {visibleCards.streak && (
-                <div
-                  key="streak"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, 'streak')}
-                  onDragOver={handleDragOver}
-                  onDragEnd={handleDragEnd}
-                  className={`cursor-move transition-opacity ${
-                    draggedCard === 'streak' ? 'opacity-50' : 'opacity-100'
-                  }`}
-                >
-                  <StreakWidget streak={streak} />
-                </div>
-              )}
-            </div>
+          {/* Masonry cards layout — fills gaps automatically */}
+          <div 
+            className="p-3"
+            style={{ 
+              columns: 'auto',
+              columnWidth: '380px',
+              columnGap: '12px',
+            }}
+          >
+            {visibleCardKeys.map((cardKey) => (
+              <div
+                key={cardKey}
+                draggable
+                onDragStart={(e) => handleDragStart(e, cardKey)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, cardKey)}
+                onDragEnd={handleDragEnd}
+                className={`transition-all duration-150 ${
+                  draggedCard === cardKey 
+                    ? 'opacity-50 scale-95' 
+                    : draggedCard 
+                    ? 'opacity-70' 
+                    : 'opacity-100'
+                } ${draggedCard && draggedCard !== cardKey ? 'cursor-grab' : 'cursor-move'}`}
+                style={{
+                  transform: draggedCard === cardKey ? 'scale(0.95)' : 'scale(1)',
+                  breakInside: 'avoid',
+                  marginBottom: '12px',
+                }}
+              >
+                {cardComponents[cardKey]}
+              </div>
+            ))}
           </div>
 
           <Footer />
@@ -201,7 +178,7 @@ export default function Dashboard() {
         )}
 
         <CardSlot visible={visibleCards.pomodoro}>
-          <PomodoroTimer />
+          <PomodoroTimer onSessionComplete={recordPomodoroSession} />
         </CardSlot>
 
         <CardSlot visible={visibleCards.calendar}>
@@ -209,7 +186,7 @@ export default function Dashboard() {
         </CardSlot>
 
         <CardSlot visible={visibleCards.streak}>
-          <StreakWidget streak={streak} />
+          <StreakWidget streak={streak} completedToday={completedToday} />
         </CardSlot>
 
         <CardSlot visible={visibleCards.countdown}>

@@ -1,17 +1,9 @@
-/**
- * AccountPage.jsx — Redesigned as a SlideUpModal sheet
- * Matches design: bottom sheet, 85vh, glassmorphism, dark bg
- * Trigger: clicking "Account" in BottomNav opens this as a modal,
- * NOT a page. Wire this up in app.jsx / BottomNav accordingly.
- *
- * Usage: <AccountModal isOpen={showAccount} onClose={() => setShowAccount(false)} />
- */
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { updateDisplayName } from '@/services/firebaseAuthService';
 import FeedbackModal from '@/Components/ui/FeedbackModal';
+import SignOutModal from '@/Components/ui/SignOutModal';
 
 export default function AccountModal({ isOpen, onClose }) {
   const { currentUser, userProfile, setUserProfile, logout } = useAuth();
@@ -86,7 +78,14 @@ export default function AccountModal({ isOpen, onClose }) {
     startYRef.current = null;
   };
 
-  const handleLogout = async () => {
+ const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+
+  const handleLogout = () => {
+    setShowSignOutConfirm(true);
+  };
+
+  const confirmSignOut = async () => {
+    setShowSignOutConfirm(false);
     setLoggingOut(true);
     try { await logout(); }
     catch { setLoggingOut(false); }
@@ -278,7 +277,7 @@ export default function AccountModal({ isOpen, onClose }) {
           {!isEditingUsername ? (
             <MenuItem
               icon={<EditIcon />}
-              label={`@${displayName}`}
+              label={displayName}
               onClick={handleEditUsername}
             />
           ) : (
@@ -368,7 +367,7 @@ export default function AccountModal({ isOpen, onClose }) {
             label="Sign out"
             labelColor="#FF453A"
             iconColor="#FF453A"
-            onClick={handleLogout}
+            onClick={() => setShowSignOutConfirm(true)}
             loading={loggingOut}
           />
           <MenuItem
@@ -385,6 +384,11 @@ export default function AccountModal({ isOpen, onClose }) {
 
       {/* Feedback Modal */}
       <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
+      <SignOutModal
+        isOpen={showSignOutConfirm}
+        onCancel={() => setShowSignOutConfirm(false)}
+        onConfirm={confirmSignOut}
+      />
     </>
   );
 }

@@ -1,16 +1,4 @@
-/**
- * Sidebar.jsx
- * Collapsible left sidebar (~240px expanded, ~64px collapsed, icon-only)
- * Features:
- *   - Logo + collapse toggle
- *   - User section with avatar and profile
- *   - Nav links (Home, Calendar, Chat)
- *   - Cards submenu (collapsible, with toggle switches for card visibility)
- *   - Bottom: Appearance toggle, Feedback, Sign out
- * Props (optional):
- *   - visibleCards, toggleCard, isLastVisible from useCardVisibility
- */
-
+import SignOutModal from '@/Components/ui/SignOutModal';
 import { useState, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTheme } from '@/context/ThemeContext';
@@ -54,11 +42,17 @@ export default function Sidebar({
   const [newUsername, setNewUsername] = useState('');
   const [editError, setEditError] = useState('');
   const [isSavingUsername, setIsSavingUsername] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
-  const handleSignOut = useCallback(async () => {
-    await logout();
-    navigate('/login');
-  }, [logout, navigate]);
+const handleSignOut = useCallback(() => {
+  setShowSignOutConfirm(true);
+}, []);
+
+const confirmSignOut = useCallback(async () => {
+  setShowSignOutConfirm(false);
+  await logout();
+  navigate('/login');
+}, [logout, navigate]);
 
   // Extract user initials
   const getInitials = () => {
@@ -598,35 +592,134 @@ export default function Sidebar({
           </button>
 
           {/* Sign out */}
-          <button
-            onClick={handleSignOut}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              gap: 8,
-              color: '#FF453A',
-              fontSize: 12,
-              borderRadius: 8,
-              transition: 'background 200ms ease',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,69,58,0.08)')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-          >
-            <SignOutIcon />
-            {!collapsed && <span>Sign out</span>}
-          </button>
+          {/* Sign out */}
+<button
+  onClick={() => setShowSignOutConfirm(true)}
+  style={{
+    width: '100%',
+    padding: '8px 12px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: collapsed ? 'center' : 'flex-start',
+    gap: 8,
+    color: '#FF453A',
+    fontSize: 12,
+    borderRadius: 8,
+    transition: 'background 200ms ease',
+  }}
+  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,69,58,0.08)')}
+  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+>
+  <SignOutIcon />
+  {!collapsed && <span>Sign out</span>}
+</button>
         </div>
       </aside>
 
       {/* Modals */}
       <AccountModal isOpen={showAccount} onClose={() => setShowAccount(false)} />
       <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
+        {/* Sign out confirmation modal */}
+{showSignOutConfirm && (
+  <div style={{
+    position: 'fixed', inset: 0, zIndex: 1000,
+    display: 'flex', alignItems: 'flex-end',
+    justifyContent: 'center',
+  }}>
+    {/* Backdrop */}
+    <div
+      onClick={() => setShowSignOutConfirm(false)}
+      style={{
+        position: 'absolute', inset: 0,
+        background: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(15,23,42,0.15)',
+        backdropFilter: 'blur(4px)',
+      }}
+    />
+
+    {/* Sheet */}
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      maxWidth: 480,
+      background: isDark ? 'rgba(14,14,16,0.97)' : '#ffffff',
+      backdropFilter: 'blur(20px)',
+      borderRadius: '24px 24px 0 0',
+      border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e5e7eb',
+      padding: '28px 24px 40px',
+      animation: 'slideUp 380ms cubic-bezier(0.34,1.56,0.64,1)',
+    }}>
+      {/* Drag handle */}
+      <div style={{
+        width: 36, height: 4, borderRadius: 999,
+        background: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+        margin: '0 auto 24px',
+      }} />
+
+      {/* Icon */}
+      <div style={{
+        width: 48, height: 48, borderRadius: '50%',
+        background: 'rgba(255,69,58,0.1)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 16px',
+      }}>
+        <SignOutIcon />
+      </div>
+
+      {/* Text */}
+      <h3 style={{
+        textAlign: 'center',
+        color: isDark ? '#ffffff' : '#000000',
+        fontSize: 16, fontWeight: 700, marginBottom: 8,
+      }}>
+        Sign out?
+      </h3>
+      <p style={{
+        textAlign: 'center',
+        color: isDark ? 'rgba(255,255,255,0.4)' : '#6b7280',
+        fontSize: 13, lineHeight: 1.5, marginBottom: 28,
+      }}>
+        You'll need to sign back in to access your workspace.
+      </p>
+
+      {/* Buttons */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button
+          onClick={confirmSignOut}
+          style={{
+            width: '100%', padding: '14px 0',
+            background: '#FF453A', color: '#ffffff',
+            border: 'none', borderRadius: 14,
+            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            transition: 'opacity 150ms ease',
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          Sign out
+        </button>
+        <button
+          onClick={() => setShowSignOutConfirm(false)}
+          style={{
+            width: '100%', padding: '14px 0',
+            background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.05)',
+            color: isDark ? '#ffffff' : '#000000',
+            border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e5e7eb',
+            borderRadius: 14,
+            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            transition: 'background 150ms ease',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(15,23,42,0.08)'}
+          onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.05)'}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </>
   );
 }

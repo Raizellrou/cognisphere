@@ -17,26 +17,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth }    from '@/context/AuthContext';
 import { useCards }   from '@/hooks/useCards';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 import DesktopLayout  from '@/Layouts/DesktopLayout';
 import AddCardModal   from '@/components/cards/AddCardModal';
 import BottomNav      from '@/components/layout/BottomNav';
-
-// ── Desktop breakpoint hook ─────────────────────────────────────────────────
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth >= 1024;
-  });
-
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const handler = (e) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-
-  return isDesktop;
-}
 
 export default function CardsPage() {
   const { currentUser } = useAuth();
@@ -60,12 +44,12 @@ export default function CardsPage() {
   // ── Navigation ────────────────────────────────────────────────────────────
   const goNext = () => {
     setFlipped(false);
-    setTimeout(() => setCurrentIdx(i => Math.min(i + 1, total - 1)), 150);
+    setCurrentIdx(i => Math.min(i + 1, (activeDeck?.length ?? 0) - 1));
   };
 
   const goPrev = () => {
     setFlipped(false);
-    setTimeout(() => setCurrentIdx(i => Math.max(i - 1, 0)), 150);
+    setCurrentIdx(i => Math.max(i - 1, 0));
   };
 
   const handleShuffle = () => {

@@ -22,7 +22,7 @@ export default function AboutPage() {
       <nav className="border-b border-gray-200 sticky top-0 z-50 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
             className="flex-shrink-0 flex items-center gap-2 hover:opacity-70 transition-opacity"
           >
             <img
@@ -40,7 +40,7 @@ export default function AboutPage() {
           </div>
 
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
             style={{ backgroundColor: '#1C9EF9' }}
             className="hover:opacity-90 text-white px-6 py-2 rounded text-sm font-semibold transition-opacity"
           >
@@ -186,7 +186,7 @@ export default function AboutPage() {
           <h2 className="text-4xl font-bold mb-8">Ready to start?</h2>
           <div className="flex gap-4 justify-center">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/dashboard')}
               style={{ backgroundColor: '#1C9EF9' }}
               className="hover:opacity-90 text-white px-8 py-3 rounded font-semibold transition-opacity inline-flex items-center gap-2"
             >

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { doc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/firebase';
 import { useAuth } from '@/context/AuthContext';
@@ -15,6 +15,16 @@ export default function FeedbackModal({ isOpen, onClose }) {
   const [submitError, setSubmitError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setMessage('');
+      setCategory(null);
+      setMood(null);
+      setSubmitError('');
+      setShowSuccess(false);
+    }
+  }, [isOpen]);
+
   const categories = [
     { id: 'bug', label: 'Bug Report', icon: <BugIcon /> },
     { id: 'suggestion', label: 'Suggestion', icon: <LightbulbIcon /> },
@@ -29,7 +39,10 @@ export default function FeedbackModal({ isOpen, onClose }) {
   ];
 
   const handleSubmit = async () => {
-    if (!message.trim()) return;
+    if (!message.trim()) {
+  setSubmitError('Please enter your feedback.');
+  return;
+}
 
     setIsSubmitting(true);
     setSubmitError('');
@@ -37,16 +50,16 @@ export default function FeedbackModal({ isOpen, onClose }) {
     try {
       const feedbackRef = collection(db, 'feedback');
       await addDoc(feedbackRef, {
-        uid: currentUser?.uid || 'anonymous',
+        uid: currentUser?.uid || null,
+isAnonymous: !currentUser,
         displayName: currentUser?.displayName || userProfile?.displayName || 'Unknown',
-        email: currentUser?.email || 'Unknown',
+        email: currentUser?.email || null,
         message: message.trim(),
         category: category || 'general',
         mood: mood || 'neutral',
         createdAt: serverTimestamp(),
       });
 
-      console.log('Feedback sent successfully');
       setShowSuccess(true);
       setMessage('');
       setCategory(null);
@@ -57,7 +70,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
         onClose();
       }, 2000);
     } catch (error) {
-      console.error('Firestore feedback write error:', error);
+      console.error('Feedback error:', error);
       setSubmitError('Failed to send feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -65,17 +78,25 @@ export default function FeedbackModal({ isOpen, onClose }) {
   };
 
   const handleClose = () => {
-    if (!isSubmitting && !showSuccess) {
+    if (!isSubmitting) {
       setMessage('');
       setCategory(null);
       setMood(null);
       setSubmitError('');
+      setShowSuccess(false);
       onClose();
     }
   };
 
   return (
-    <SlideUpModal
+    <>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+      `}</style>
+      <SlideUpModal
       isOpen={isOpen}
       onClose={handleClose}
       title="Share your feedback"
@@ -102,6 +123,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
           disabled={isSubmitting || showSuccess}
           style={{
             width: '100%',
+            boxSizing: 'border-box',
             padding: '12px 14px',
             borderRadius: 10,
             border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e5e7eb',
@@ -286,7 +308,8 @@ export default function FeedbackModal({ isOpen, onClose }) {
         {/* Bottom safe area */}
         <div style={{ height: 16 }} />
       </div>
-    </SlideUpModal>
+      </SlideUpModal>
+    </>
   );
 }
 

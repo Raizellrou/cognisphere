@@ -75,10 +75,10 @@ export function useCalendarEvents(uid, viewYear, viewMonth) {
   }, [uid]);
 
   // ── Toggle event done status ────────────────────────────────────────────────────────
-  const toggleEvent = useCallback(async (eventId, currentDone) => {
+  const toggleEvent = useCallback(async (eventId, doneStatus) => {
     if (!uid) return;
     await updateDoc(doc(db, 'users', uid, 'events', eventId), {
-      done: !currentDone,
+      done: doneStatus,
     });
   }, [uid]);
 
